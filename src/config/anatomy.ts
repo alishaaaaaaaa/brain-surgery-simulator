@@ -156,8 +156,8 @@ export const anatomy = {
     /**
      * Posterior communicating artery: arises from the POSTERIOR (deep) wall of the ICA and
      * runs posteromedially, deep and under the temporal side, toward the posterior cerebral
-     * artery. It is best seen lateral to the ICA, in the carotid–oculomotor window. Its origin is the "PC" in
-     * "IC-PC aneurysm". It must stay patent after clipping — it often supplies perforators
+     * artery. It is best seen lateral to the ICA, in the carotid–oculomotor window.
+     * Its origin is the "PC" in "IC-PC aneurysm". It must stay patent after clipping — it often supplies perforators
      * to the thalamus and internal capsule.
      */
     pcom: {
@@ -278,6 +278,40 @@ export const anatomy = {
     opacity: 0.5,
     color: '#f1ebe4',
   },
+
+  /**
+   * Arachnoid/fibrous adhesions around the aneurysm, freed with the dissector (stage 4).
+   *
+   * `from` is a point on the aneurysm: `around` is the angle (degrees) around the
+   * aneurysm axis, where 0° = distal side of the neck (toward the AChA / bifurcation) and
+   * 180° = proximal side (toward the PCom origin); `height` is mm above the neck plane.
+   * `to` is a point on a named vessel or nerve (t along its centreline, or 'nearest').
+   *
+   *  - kind 'neck': must be freed so the clip blades can pass around the neck. Freeing
+   *    both sides of the neck — proximal and distal — is the goal of stage 4.
+   *  - kind 'dome': the dome is stuck to neighbouring structures. Leave these alone:
+   *    dissecting the dome off them risks rupture. The clip does not need them freed.
+   */
+  adhesions: [
+    // Proximal side: the PCom origin is stuck to the neck and must be separated from it.
+    { id: 'neckPcom', kind: 'neck', from: { around: 140, height: 0.4 }, to: { curve: 'pcom', t: 0.25 } },
+    { id: 'neckPcomOrigin', kind: 'neck', from: { around: 210, height: 0.35 }, to: { curve: 'pcom', t: 0.12 } },
+    // Distal side: the anterior choroidal artery and the distal ICA wall.
+    { id: 'neckAcha', kind: 'neck', from: { around: 0, height: 0.4 }, to: { curve: 'acha', t: 0.08 } },
+    { id: 'neckIcaDistal', kind: 'neck', from: { around: 60, height: 0.3 }, to: { curve: 'ica', t: 0.72 } },
+    { id: 'domeOculomotor', kind: 'dome', from: { around: 110, height: 4.6 }, to: { curve: 'oculomotorNerve', t: 'nearest' } },
+    { id: 'domeAcha', kind: 'dome', from: { around: 20, height: 3.8 }, to: { curve: 'acha', t: 0.3 } },
+  ] as const,
+
+  /**
+   * Cerebrospinal fluid pooling in the cisterns: suction clears it to improve the view.
+   * (In M4 blood pools use the same mechanism.)
+   */
+  csfPools: [
+    { x: -3, y: -8, z: -48.9, radius: 5.5 },
+    { x: 9, y: -12, z: -48.9, radius: 4.5 },
+    { x: -14, y: 2, z: -48.9, radius: 4 },
+  ],
 
   /**
    * Brain spatulas (self-retaining retractor blades) resting on the frontal and temporal

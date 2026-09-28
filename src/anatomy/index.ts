@@ -1,11 +1,12 @@
 import { BufferGeometry, CatmullRomCurve3, Group, Mesh, Object3D, Vector3 } from 'three';
 import { acceleratedRaycast, computeBoundsTree, disposeBoundsTree } from 'three-mesh-bvh';
 import { anatomy, type NerveId, type VesselId } from '../config/anatomy';
+import { buildAdhesions, type Adhesion } from './adhesions';
 import { buildAneurysm, type AneurysmHandle } from './aneurysm';
 import { buildArachnoid, type ArachnoidPatch } from './arachnoid';
 import { buildFloor, buildLobe } from './brain';
 import { buildLabels } from './labels';
-import { buildSpatulas } from './spatulas';
+import { buildSpatulas, type Spatula } from './spatulas';
 import { buildNerves, buildVesselCurves, buildVessels } from './vessels';
 
 export interface Anatomy {
@@ -16,7 +17,8 @@ export interface Anatomy {
   nerveCurves: Map<NerveId, CatmullRomCurve3>;
   aneurysm: AneurysmHandle;
   arachnoid: ArachnoidPatch[];
-  spatulas: Group;
+  adhesions: Adhesion[];
+  spatulas: Spatula[];
   labels: Group;
   /** Meshes the cursor can hit (for autofocus now, tool interaction from M2). */
   pickables: Object3D[];
@@ -40,7 +42,12 @@ export function buildAnatomy(): Anatomy {
   const { group: nerveGroup, meshes: nerves, curves: nerveCurves } = buildNerves();
   const aneurysm = buildAneurysm(vesselCurves.get('ica')!);
   const { group: arachnoidGroup, patches } = buildArachnoid();
-  const spatulas = buildSpatulas();
+  const { group: spatulaGroup, spatulas } = buildSpatulas();
+  const { group: adhesionGroup, adhesions } = buildAdhesions(
+    aneurysm,
+    new Map<VesselId | NerveId, CatmullRomCurve3>([...vesselCurves, ...nerveCurves]),
+    vesselCurves.get('ica')!,
+  );
 
   const at = (id: VesselId, t: number) => vesselCurves.get(id)!.getPointAt(t);
   const b = anatomy.brain;
@@ -61,7 +68,7 @@ export function buildAnatomy(): Anatomy {
     { key: 'anat.sylvianFissure', position: new Vector3(24, b.corridorCenterY + 4, -6) },
   ]);
 
-  root.add(frontal, temporal, floor, vesselGroup, nerveGroup, aneurysm.group, arachnoidGroup, spatulas, labels);
+  root.add(frontal, temporal, floor, vesselGroup, nerveGroup, aneurysm.group, adhesionGroup, arachnoidGroup, spatulaGroup, labels);
 
   const pickables: Object3D[] = [
     frontal,
@@ -71,7 +78,8 @@ export function buildAnatomy(): Anatomy {
     ...nerveGroup.children,
     aneurysm.dome,
     aneurysm.bleb,
-    ...spatulas.children,
+    ...spatulas.map((s) => s.mesh),
+    ...adhesions.map((a) => a.proxy),
     ...patches.map((p) => p.mesh),
   ];
 
@@ -85,6 +93,7 @@ export function buildAnatomy(): Anatomy {
     nerveCurves,
     aneurysm,
     arachnoid: patches,
+    adhesions,
     spatulas,
     labels,
     pickables,

@@ -5,7 +5,8 @@
  */
 import { describe, expect, it } from 'vitest';
 import { CatmullRomCurve3, Mesh, PerspectiveCamera, Raycaster, Vector3 } from 'three';
-import { anatomy, microscope, type VesselId, type VesselSpec } from '../config/anatomy';
+import { anatomy, microscope, type NerveId, type VesselId, type VesselSpec } from '../config/anatomy';
+import { buildAdhesions } from './adhesions';
 import { buildAneurysm } from './aneurysm';
 import { buildLobe } from './brain';
 import { buildTaperedTube } from './tube';
@@ -126,4 +127,41 @@ describe('lobe mesh', () => {
       expect(up / n).toBeGreaterThan(0.95);
     }
   });
+});
+
+describe('neck adhesions (stage 4)', () => {
+  const specs = anatomy.vessels as Record<VesselId, VesselSpec>;
+  const tubes = [...curves].map(([id, c]) => new Mesh(buildTaperedTube(c, { radius: specs[id].radius })));
+  const { adhesions } = buildAdhesions(
+    aneurysm,
+    new Map<VesselId | NerveId, CatmullRomCurve3>([...curves, ...(Object.entries(nerveCurves) as [NerveId, CatmullRomCurve3][])]),
+    curves.get('ica')!,
+  );
+  const occluders = [...tubes, aneurysm.dome, aneurysm.bleb, ...lobes];
+  const axis = new Vector3(...microscope.viewAxis).normalize();
+  const right = new Vector3().crossVectors(axis.clone().negate(), new Vector3(0, 1, 0)).normalize();
+  const up = new Vector3().crossVectors(axis, right);
+
+  /** Visible sample points along the band from a microscope tilted by `deg` toward `dir`. */
+  function visibleSamples(ad: (typeof adhesions)[number], deg: number, dirAngle: number): number {
+    const t = Math.tan((deg * Math.PI) / 180);
+    const dir = axis.clone().addScaledVector(right, t * Math.cos(dirAngle)).addScaledVector(up, t * Math.sin(dirAngle)).normalize();
+    const cam = target.clone().addScaledVector(dir, microscope.workingDistance);
+    let n = 0;
+    for (const f of [0.2, 0.35, 0.5, 0.65, 0.8]) {
+      const p = ad.from.clone().lerp(ad.to, f);
+      const d = p.clone().sub(cam);
+      if (new Raycaster(cam, d.clone().normalize(), 0, d.length() - 0.3).intersectObjects(occluders, false).length === 0) n++;
+    }
+    return n;
+  }
+
+  it.each(adhesions.filter((a) => a.kind === 'neck').map((a) => [a.id, a] as const))(
+    '%s can be reached by tilting the microscope (≤ 20°)',
+    (_id, ad) => {
+      let best = visibleSamples(ad, 0, 0);
+      for (let k = 0; k < 8 && best < 2; k++) best = Math.max(best, visibleSamples(ad, 20, (k * Math.PI) / 4));
+      expect(best).toBeGreaterThanOrEqual(2);
+    },
+  );
 });

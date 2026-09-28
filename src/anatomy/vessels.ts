@@ -69,7 +69,6 @@ export function buildNerves(): { group: Group; meshes: Map<NerveId, Mesh>; curve
   group.name = 'nerves';
   const meshes = new Map<NerveId, Mesh>();
   const curves = new Map<NerveId, CatmullRomCurve3>();
-  const material = createNerveMaterial();
   for (const [id, spec] of Object.entries(anatomy.nerves) as [NerveId, (typeof anatomy.nerves)[NerveId]][]) {
     const curve = new CatmullRomCurve3(spec.points.map(v), false, 'centripetal');
     const geo = buildTaperedTube(curve, {
@@ -78,7 +77,7 @@ export function buildNerves(): { group: Group; meshes: Map<NerveId, Mesh>; curve
       tubularSegments: 80,
       radialSegments: 24,
     });
-    const mesh = new Mesh(geo, material);
+    const mesh = new Mesh(geo, createNerveMaterial());
     mesh.name = id;
     mesh.userData.structure = id;
     group.add(mesh);

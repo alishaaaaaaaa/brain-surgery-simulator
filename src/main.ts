@@ -1,20 +1,37 @@
 import './ui/styles.css';
-import { Mesh, PerspectiveCamera } from 'three';
+import { Group, Mesh, type Object3D, PerspectiveCamera } from 'three';
 import { CSS2DRenderer } from 'three/examples/jsm/renderers/CSS2DRenderer.js';
 import { buildAnatomy } from './anatomy';
+import { updateAdhesions } from './anatomy/adhesions';
+import { updateArachnoid } from './anatomy/arachnoid';
 import { pulseUniform } from './anatomy/pulsation';
+import { AudioEngine } from './audio/engine';
 import { microscope } from './config/anatomy';
 import { sim } from './config/sim';
 import { events } from './core/events';
 import { Heart } from './core/heart';
+import { state } from './core/state';
+import { Fluids } from './physics/fluids';
 import { Autofocus } from './scene/autofocus';
 import { MicroscopeLight } from './scene/lighting';
 import { MicroscopeControls } from './scene/microscopeControls';
 import { PostFX } from './scene/postfx';
 import { createRenderer } from './scene/renderer';
+import { BipolarTool } from './tools/impl/bipolar';
+import { ClipTool } from './tools/impl/clip';
+import { DissectorTool } from './tools/impl/dissector';
+import { DopplerTool } from './tools/impl/doppler';
+import { EndoscopeTool, IcgTool } from './tools/impl/placeholders';
+import { ScissorsTool } from './tools/impl/scissors';
+import { SpatulaTool } from './tools/impl/spatula';
+import { SuctionTool } from './tools/impl/suction';
+import { ToolManager } from './tools/toolManager';
+import type { ToolContext } from './tools/types';
 import { mountHud } from './ui/hud';
 import { getLang } from './ui/i18n';
 import { showStartScreen } from './ui/startScreen';
+import { Toasts } from './ui/toast';
+import { mountToolbar } from './ui/toolbar';
 
 const viewport = document.getElementById('viewport')!;
 const uiRoot = document.getElementById('ui')!;
@@ -26,6 +43,12 @@ const camera = new PerspectiveCamera(microscope.fov, viewport.clientWidth / view
 
 const anatomy = buildAnatomy();
 scene.add(anatomy.root);
+const fluids = new Fluids();
+anatomy.root.add(fluids.group);
+const field = new Group();
+field.name = 'field';
+anatomy.root.add(field);
+
 anatomy.root.traverse((o) => {
   if (!(o instanceof Mesh)) return;
   const transparent = Array.isArray(o.material) ? false : o.material.transparent;
@@ -33,21 +56,71 @@ anatomy.root.traverse((o) => {
   o.receiveShadow = true;
 });
 
+// One shared list of pickable objects: autofocus and the tools both raycast it.
+const pickables = anatomy.pickables;
+pickables.push(...fluids.pools.map((p) => p.mesh));
+
 const controls = new MicroscopeControls(camera, renderer.domElement);
 const light = new MicroscopeLight(scene);
 const post = new PostFX(renderer, scene, camera);
-const autofocus = new Autofocus(camera, renderer.domElement, anatomy.pickables, post.focusPoint, controls.target);
+const autofocus = new Autofocus(camera, renderer.domElement, pickables, post.focusPoint, controls.target);
 
 const labelRenderer = new CSS2DRenderer();
 labelRenderer.domElement.className = 'label-layer';
 viewport.appendChild(labelRenderer.domElement);
 
 const heart = new Heart(sim.heart.baselineRate);
+const audio = new AudioEngine();
+
+// --- Tools -----------------------------------------------------------------
+const toasts = new Toasts(uiRoot);
+toasts.onCaution = () => audio.caution();
+
+const ctx: ToolContext = {
+  scene,
+  camera,
+  anatomy,
+  fluids,
+  audio,
+  toasts,
+  field,
+  addPickable: (o: Object3D) => pickables.push(o),
+  removePickable: (o: Object3D) => {
+    const i = pickables.indexOf(o);
+    if (i >= 0) pickables.splice(i, 1);
+  },
+};
+const clipTool = new ClipTool(ctx, 'permanent');
+const tempClipTool = new ClipTool(ctx, 'temporary');
+let tools: ToolManager;
+const spatulaTool = new SpatulaTool(ctx, () => tools.mmPerPixel());
+tools = new ToolManager(
+  [
+    new SuctionTool(ctx),
+    new ScissorsTool(ctx),
+    new BipolarTool(ctx),
+    new DissectorTool(ctx),
+    spatulaTool,
+    clipTool,
+    new IcgTool(ctx),
+    new DopplerTool(ctx, heart),
+    new EndoscopeTool(ctx),
+    tempClipTool,
+  ],
+  camera,
+  renderer.domElement,
+  pickables,
+  controls,
+  scene,
+);
 
 // --- UI --------------------------------------------------------------------
 let hud: ReturnType<typeof mountHud> | null = null;
+let toolbar: ReturnType<typeof mountToolbar> | null = null;
 showStartScreen(uiRoot, () => {
+  audio.unlock();
   hud = mountHud(uiRoot);
+  toolbar = mountToolbar(uiRoot, tools, clipTool);
   events.emit('started');
 });
 
@@ -55,6 +128,7 @@ window.addEventListener('keydown', (e) => {
   if (e.metaKey || e.ctrlKey || e.altKey) return;
   const key = e.key.toLowerCase();
   if (key === 'l') anatomy.labels.visible = !anatomy.labels.visible;
+  // R resets the view unless a tool uses the key.
   if (key === 'r') controls.reset();
 });
 
@@ -82,6 +156,9 @@ renderer.setAnimationLoop((now: number) => {
   pulseUniform.value = heart.pulse;
 
   controls.update(dt);
+  tools.update(dt);
+  updateArachnoid(anatomy.arachnoid, dt);
+  updateAdhesions(anatomy.adhesions, dt);
   autofocus.update(dt);
   post.setZoom(controls.fov);
   light.update(camera, controls.target);
@@ -93,8 +170,9 @@ renderer.setAnimationLoop((now: number) => {
   if (hud && hudTimer <= 0) {
     hudTimer = 0.1;
     hud.setReadouts(controls.magnification, autofocus.depth);
+    toolbar?.refresh();
   }
 });
 
-// Handy for debugging in the browser console.
-Object.assign(window, { __sim: { scene, camera, anatomy, controls, post, heart } });
+// Handy for debugging in the browser console (e.g. __sim.state.ruptureRisk).
+Object.assign(window, { __sim: { scene, camera, anatomy, controls, post, heart, tools, state, fluids } });

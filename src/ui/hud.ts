@@ -29,6 +29,9 @@ export function mountHud(root: HTMLElement): Hud {
     h(
       'ul',
       {},
+      tr('li', 'hud.controls.tools'),
+      tr('li', 'hud.controls.tool'),
+      tr('li', 'hud.controls.noTool'),
       tr('li', 'hud.controls.tilt'),
       tr('li', 'hud.controls.pan'),
       tr('li', 'hud.controls.zoom'),

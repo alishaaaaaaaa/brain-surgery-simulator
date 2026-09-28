@@ -1,0 +1,226 @@
+/* OR-display look: dark, thin borders, semi-transparent panels, monospace numbers. */
+:root {
+  --bg: #000;
+  --panel: rgba(8, 12, 14, 0.66);
+  --panel-strong: rgba(8, 12, 14, 0.86);
+  --border: rgba(150, 215, 205, 0.22);
+  --border-strong: rgba(150, 215, 205, 0.45);
+  --text: #d6e2df;
+  --muted: #7d8e8b;
+  --accent: #5fe0c6;
+  --warn: #ffb547;
+  --alarm: #ff5d5d;
+  --mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+  --sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --radius: 4px;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 13px;
+  -webkit-font-smoothing: antialiased;
+}
+
+#viewport {
+  position: fixed;
+  inset: 0;
+}
+#viewport canvas { display: block; cursor: crosshair; touch-action: none; }
+#viewport.is-tilting canvas, #viewport canvas.is-tilting { cursor: grabbing; }
+#viewport canvas.is-panning { cursor: move; }
+
+/* Circular field stop of the eyepiece / scope camera. */
+#eyepiece {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    circle at 50% 50%,
+    transparent 0,
+    transparent calc(58vmin - 2px),
+    rgba(0, 0, 0, 0.85) calc(62vmin),
+    #000 calc(66vmin)
+  );
+}
+
+#ui {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}
+#ui > * { pointer-events: auto; }
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+button {
+  font: inherit;
+  color: var(--text);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 6px 12px;
+  cursor: pointer;
+}
+button:hover { border-color: var(--border-strong); background: rgba(95, 224, 198, 0.06); }
+button:focus-visible { outline: 1px solid var(--accent); outline-offset: 2px; }
+
+/* Language toggle (segmented) */
+.lang-toggle { display: inline-flex; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+.lang-toggle button {
+  border: 0;
+  border-radius: 0;
+  padding: 3px 9px;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+.lang-toggle button[aria-pressed='true'] { color: var(--bg); background: var(--accent); }
+
+/* ---------- Start screen ---------- */
+.start-screen {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  transition: opacity 0.5s ease;
+}
+.start-screen.is-hidden { opacity: 0; pointer-events: none; }
+.start-card {
+  width: min(560px, 100%);
+  padding: 28px 28px 24px;
+  background: var(--panel-strong);
+}
+.start-card header { display: flex; justify-content: space-between; align-items: start; gap: 16px; }
+.start-card h1 { margin: 0; font-size: 20px; font-weight: 600; letter-spacing: 0.01em; }
+.start-card .subtitle { margin: 6px 0 0; color: var(--muted); font-size: 12px; }
+.start-card .eyebrow {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--accent);
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.disclaimer {
+  margin: 22px 0 18px;
+  padding: 12px 14px;
+  border: 1px solid rgba(255, 181, 71, 0.45);
+  border-left: 3px solid var(--warn);
+  border-radius: var(--radius);
+  background: rgba(255, 181, 71, 0.06);
+}
+.disclaimer strong { display: block; color: var(--warn); font-size: 12px; letter-spacing: 0.04em; margin-bottom: 6px; }
+.disclaimer p { margin: 0; line-height: 1.5; }
+.disclaimer p + p { margin-top: 8px; color: var(--muted); font-size: 12px; }
+.start-card .start-btn {
+  width: 100%;
+  padding: 10px 14px;
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+.start-card .start-btn:hover { background: rgba(95, 224, 198, 0.12); }
+
+/* ---------- HUD ---------- */
+.hud-top {
+  position: fixed;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  padding: 5px 12px;
+  font-size: 11px;
+}
+.hud-top .readout { display: flex; gap: 6px; align-items: baseline; }
+.hud-top .readout .k { color: var(--muted); font-family: var(--mono); letter-spacing: 0.1em; font-size: 10px; }
+.hud-top .readout .v { color: var(--accent); font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+.hud-brand {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 5px 8px 5px 12px;
+  font-size: 11px;
+}
+.hud-brand .title { font-weight: 600; letter-spacing: 0.02em; }
+
+.hud-help {
+  position: fixed;
+  left: 12px;
+  bottom: 12px;
+  padding: 10px 12px;
+  font-size: 11px;
+  line-height: 1.7;
+  color: var(--muted);
+  max-width: min(340px, calc(100vw - 24px));
+}
+.hud-help h2 {
+  margin: 0 0 4px;
+  font-size: 10px;
+  font-family: var(--mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text);
+  font-weight: 500;
+}
+.hud-help ul { margin: 0; padding: 0; list-style: none; }
+.hud-help .milestone { margin-top: 6px; color: var(--accent); font-family: var(--mono); font-size: 10px; }
+
+/* ---------- Anatomy labels ---------- */
+.label-layer { position: fixed; inset: 0; pointer-events: none; }
+.anat-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: #f2f7f6;
+  white-space: nowrap;
+  text-shadow: 0 1px 2px #000, 0 0 6px #000;
+  pointer-events: none;
+}
+.anat-label i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.6);
+  flex: none;
+}
+.anat-label span {
+  padding: 1px 6px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: rgba(6, 10, 12, 0.72);
+}
+
+@media (max-width: 640px) {
+  .hud-help { display: none; }
+  .hud-brand .title { display: none; }
+}

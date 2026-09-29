@@ -11,8 +11,13 @@ export interface Facts {
   arachnoidOpened(sheet: 'superficial' | 'middle' | 'deep'): number;
   /** Seconds the cursor has rested on a structure (cumulative). */
   dwell(s: StructureId): number;
-  /** Whether the Doppler probe has been pressed on a structure. */
-  dopplerTouched(s: StructureId): boolean;
+  /**
+   * The latest Doppler check on a structure: the flow heard, and whether it was made after
+   * the most recent clip change (older checks no longer describe the current situation).
+   */
+  doppler(s: StructureId): { flow: number; current: boolean } | null;
+  /** ICG has been run since the most recent clip change. */
+  icgSinceClipChange(): boolean;
   adhesionFreed(id: string): boolean;
   retraction: { frontal: number; temporal: number };
   /** Number of permanent clips whose blades sit across the neck. */
@@ -49,10 +54,15 @@ const identify = (s: StructureId, labelKey: I18nKey): Subtask => ({
   progress: (f) => Math.min(1, f.dwell(s) / sim.procedure.identifyDwell),
 });
 
-const doppler = (s: StructureId, labelKey: I18nKey): Subtask => ({
+/** Doppler hears flow in a vessel (optionally: checked after the latest clip change). */
+const dopplerFlow = (s: StructureId, labelKey: I18nKey, afterClip = false): Subtask => ({
   id: `doppler-${s}`,
   labelKey,
-  progress: (f) => (f.dopplerTouched(s) ? 1 : 0),
+  live: afterClip,
+  progress: (f) => {
+    const d = f.doppler(s);
+    return d && (!afterClip || d.current) && d.flow > sim.flow.flowingAbove ? 1 : 0;
+  },
 });
 
 /** Hemostasis: a step is not finished while something is still bleeding. */
@@ -87,7 +97,7 @@ export const STAGES: StageDef[] = [
     id: 'identifyM1',
     titleKey: 'stage.identifyM1',
     mentorKey: 'mentor.identifyM1',
-    subtasks: [identify('m1', 'task.identifyM1'), doppler('m1', 'task.dopplerM1')],
+    subtasks: [identify('m1', 'task.identifyM1'), dopplerFlow('m1', 'task.dopplerM1')],
   },
   {
     id: 'identifyIcaOptic',
@@ -122,14 +132,25 @@ export const STAGES: StageDef[] = [
     ],
   },
   {
-    // After clipping: the parent artery and both branches must still flow.
+    // After clipping: the parent artery and both branches must still flow, and the sac must
+    // be excluded. All checks must be made on the current clip placement.
     id: 'patency',
     titleKey: 'stage.patency',
     mentorKey: 'mentor.patency',
     subtasks: [
-      doppler('ica', 'task.dopplerIca'),
-      doppler('pcom', 'task.dopplerPcom'),
-      doppler('acha', 'task.dopplerAcha'),
+      dopplerFlow('ica', 'task.dopplerIca', true),
+      dopplerFlow('pcom', 'task.dopplerPcom', true),
+      dopplerFlow('acha', 'task.dopplerAcha', true),
+      {
+        id: 'domeSilent',
+        labelKey: 'task.domeSilent',
+        live: true,
+        progress: (f) => {
+          const d = f.doppler('aneurysm');
+          return d && d.current && d.flow < sim.flow.silentBelow ? 1 : 0;
+        },
+      },
+      { id: 'icg', labelKey: 'task.icg', live: true, progress: (f) => (f.icgSinceClipChange() ? 1 : 0) },
     ],
   },
 ];

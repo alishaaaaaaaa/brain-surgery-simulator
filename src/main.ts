@@ -14,11 +14,15 @@ import { clock } from './core/clock';
 import { state } from './core/state';
 import { Bleeding } from './physics/bleeding';
 import { Fluids } from './physics/fluids';
+import { FlowModel, type FlowState } from './physics/flow';
+import type { ClipGeometry } from './physics/clipEvaluation';
 import { Physiology } from './physics/physiology';
 import { Complications } from './procedure/complications';
 import { Procedure } from './procedure/procedure';
 import { Tracker } from './procedure/tracker';
 import { Autofocus } from './scene/autofocus';
+import { EndoscopeView } from './scene/endoscope';
+import { IcgView } from './scene/icg';
 import { MicroscopeLight } from './scene/lighting';
 import { MicroscopeControls } from './scene/microscopeControls';
 import { PostFX } from './scene/postfx';
@@ -27,7 +31,8 @@ import { BipolarTool } from './tools/impl/bipolar';
 import { ClipTool } from './tools/impl/clip';
 import { DissectorTool } from './tools/impl/dissector';
 import { DopplerTool } from './tools/impl/doppler';
-import { EndoscopeTool, IcgTool } from './tools/impl/placeholders';
+import { EndoscopeTool } from './tools/impl/endoscope';
+import { IcgTool } from './tools/impl/icg';
 import { ScissorsTool } from './tools/impl/scissors';
 import { SpatulaTool } from './tools/impl/spatula';
 import { SuctionTool } from './tools/impl/suction';
@@ -105,6 +110,23 @@ const ctx: ToolContext = {
 };
 const clipTool = new ClipTool(ctx, 'permanent');
 const tempClipTool = new ClipTool(ctx, 'temporary');
+
+// --- Flow, ICG, endoscope ------------------------------------------------------
+// One flow model, evaluated from where the clips are, feeds the Doppler, ICG, bleeding and MEPs.
+const flowModel = new FlowModel(anatomy.vesselCurves, anatomy.aneurysm);
+const asGeometry = (clips: typeof clipTool.placed): ClipGeometry[] =>
+  clips.map((c) => ({ pose: c.pose, length: c.model.options.length, kind: c.model.options.kind }));
+let flow: FlowState = flowModel.compute([], []);
+
+const icg = new IcgView(anatomy, () => [bleeding.group], (on) => post.setIcg(on));
+const icgBadge = document.createElement('div');
+icgBadge.className = 'icg-badge mono';
+icgBadge.hidden = true;
+uiRoot.append(icgBadge);
+const endoscope = new EndoscopeView(scene, uiRoot);
+
+const doppler = new DopplerTool(ctx, heart);
+doppler.flowOf = (s, point) => flowModel.flowAt(flow, s, point);
 let tools: ToolManager;
 const spatulaTool = new SpatulaTool(ctx, () => tools.mmPerPixel());
 tools = new ToolManager(
@@ -115,9 +137,12 @@ tools = new ToolManager(
     new DissectorTool(ctx),
     spatulaTool,
     clipTool,
-    new IcgTool(ctx),
-    new DopplerTool(ctx, heart),
-    new EndoscopeTool(ctx),
+    new IcgTool(ctx, () => {
+      icg.start(flow.flow);
+      events.emit('icgRun');
+    }),
+    doppler,
+    new EndoscopeTool(ctx, endoscope, () => anatomy.aneurysm.neckCenter),
     tempClipTool,
   ],
   camera,
@@ -137,8 +162,6 @@ const tracker = new Tracker({
   tempClips: () => tempClipTool.placed,
   activeBleeds: () => bleeding.activeCount,
 });
-// A clip across the neck secures a ruptured aneurysm.
-bleeding.neckClipped = () => tracker.clipsAcrossNeck() > 0;
 const complications = new Complications(anatomy, bleeding, toasts);
 
 // Identifying a structure briefly shows its label, so the learner can check themselves.
@@ -216,13 +239,16 @@ renderer.setAnimationLoop((now: number) => {
   last = now;
 
   clock.tick(dt);
+  flow = flowModel.compute(asGeometry(clipTool.placed), asGeometry(tempClipTool.placed));
+  bleeding.sacFlow = flow.flow.aneurysm ?? 1;
+  bleeding.arterialFlow = flow.flow.ica ?? 1;
   if (clock.running) {
     complications.update(dt);
     physiology.update(dt, {
       ebl: state.ebl,
       bleedRate: bleeding.currentRate,
       occlusionSeconds: state.tempOcclusion.active ? state.tempOcclusion.current : 0,
-      perforatorIschemia: 0, // from the M5 flow model
+      perforatorIschemia: flow.perforatorIschemia,
     });
     heart.rate = physiology.hr;
   }
@@ -234,6 +260,9 @@ renderer.setAnimationLoop((now: number) => {
   updateArachnoid(anatomy.arachnoid, dt);
   updateAdhesions(anatomy.adhesions, dt);
   bleeding.update(dt, heart.pulse);
+  icg.update(dt);
+  icgBadge.hidden = !icg.active;
+  if (icg.active) icgBadge.textContent = `${t('icg.badge')} · ${icg.t.toFixed(1)} s`;
   anatomy.labels.update(dt);
   if (clock.running) {
     tracker.update(dt, tools.hit?.structure ?? null);
@@ -244,6 +273,7 @@ renderer.setAnimationLoop((now: number) => {
   light.update(camera, controls.target);
 
   post.render(dt);
+  endoscope.render(scene);
   vitals?.update(dt);
   labelRenderer.render(scene, camera);
 
@@ -258,4 +288,4 @@ renderer.setAnimationLoop((now: number) => {
 });
 
 // Handy for debugging in the browser console (e.g. __sim.state.ruptureRisk).
-Object.assign(window, { __sim: { scene, camera, anatomy, controls, post, heart, tools, state, fluids, procedure, tracker, clock, bleeding, physiology, complications } });
+Object.assign(window, { __sim: { scene, camera, anatomy, controls, post, heart, tools, state, fluids, procedure, tracker, clock, bleeding, physiology, complications, flowModel, getFlow: () => flow, icg, endoscope } });

@@ -26,6 +26,8 @@ export class PostFX {
   readonly dof: DepthOfFieldEffect;
   /** World-space point the microscope is focused on (updated by autofocus). */
   readonly focusPoint = new Vector3();
+  private readonly warmth: HueSaturationEffect;
+  private readonly bloom: BloomEffect;
 
   constructor(renderer: WebGLRenderer, scene: Scene, camera: PerspectiveCamera) {
     this.composer = new EffectComposer(renderer, { frameBufferType: HalfFloatType, multisampling: 4 });
@@ -47,6 +49,8 @@ export class PostFX {
     });
     const tone = new ToneMappingEffect({ mode: ToneMappingMode.ACES_FILMIC });
     const warmth = new HueSaturationEffect({ hue: -0.015, saturation: 0.12 });
+    this.warmth = warmth;
+    this.bloom = bloom;
     const contrast = new BrightnessContrastEffect({ brightness: 0.0, contrast: 0.08 });
     const vignette = new VignetteEffect({ offset: 0.32, darkness: 0.62 });
     const aberration = new ChromaticAberrationEffect({
@@ -59,6 +63,13 @@ export class PostFX {
     this.composer.addPass(new EffectPass(camera, this.dof));
     this.composer.addPass(new EffectPass(camera, bloom, tone, warmth, contrast, vignette));
     this.composer.addPass(new EffectPass(camera, aberration));
+  }
+
+  /** Near-infrared (ICG) camera: grey-scale, with the fluorescent vessels glowing. */
+  setIcg(on: boolean): void {
+    this.warmth.saturation = on ? -1 : 0.12;
+    this.warmth.hue = on ? 0 : -0.015;
+    this.bloom.intensity = on ? 0.9 : 0.45;
   }
 
   /** Magnification-dependent depth of field: more zoom → thinner in-focus slab. */

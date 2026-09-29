@@ -14,7 +14,7 @@ import type { Toasts } from '../ui/toast';
  *  - rough handling of the dome → intraoperative rupture (hidden, randomised threshold)
  *  - a cut artery → arterial bleeding; a pial injury → ooze
  *  - cutting arachnoid sometimes tears a small bridging vein → ooze
- *  - temporary ICA clip → lower inflow to the aneurysm and an occlusion timer
+ *  - temporary ICA clip → the occlusion timer
  */
 export class Complications {
   private readonly offs: (() => void)[] = [];
@@ -54,14 +54,13 @@ export class Complications {
       this.toasts.show('toast.ooze', 'caution');
     }));
 
+    // (The reduced inflow itself comes from the flow model.)
     this.offs.push(events.on('tempClipApplied', () => {
       state.tempOcclusion.active = true;
       state.tempOcclusion.current = 0;
-      this.bleeding.inflow = sim.bleeding.ruptureWithTempClip;
     }));
     this.offs.push(events.on('tempClipRemoved', () => {
       state.tempOcclusion.active = false;
-      this.bleeding.inflow = 1;
     }));
     this.offs.push(events.on('ruptureSecured', () => this.toasts.show('toast.ruptureSecured', 'success', 3500)));
     this.offs.push(events.on('bleedStopped', ({ by, kind }) => {

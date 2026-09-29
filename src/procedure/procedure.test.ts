@@ -15,11 +15,15 @@ function makeFacts() {
     clips: 0,
     temp: false,
     bleeds: 0,
+    flows: new Map<StructureId, number>(),
+    dopplerCurrent: true,
+    icg: false,
   };
   const facts: Facts = {
     arachnoidOpened: (s) => f.opened[s],
     dwell: (s) => f.dwells.get(s) ?? 0,
-    dopplerTouched: (s) => f.doppler.has(s),
+    doppler: (s) => (f.doppler.has(s) ? { flow: f.flows.get(s) ?? 1, current: f.dopplerCurrent } : null),
+    icgSinceClipChange: () => f.icg,
     adhesionFreed: (id) => f.freed.has(id),
     get retraction() {
       return f.retraction;
@@ -100,6 +104,9 @@ describe('Procedure', () => {
     f.clips = 1;
     run(p, facts);
     ['ica', 'pcom', 'acha'].forEach((s) => f.doppler.add(s as StructureId));
+    f.doppler.add('aneurysm');
+    f.flows.set('aneurysm', 0);
+    f.icg = true;
     run(p, facts);
 
     expect(completed).toEqual(STAGES.map((s) => s.id));
@@ -118,6 +125,28 @@ describe('Procedure', () => {
     f.bleeds = 0;
     run(p, facts);
     expect(p.current).toBe(1);
+  });
+
+  it('post-clip checks must be made on the current clip, and hear the right flow', () => {
+    const { f, facts } = makeFacts();
+    const p = new Procedure(STAGES.filter((s) => s.id === 'patency'));
+    ['ica', 'pcom', 'acha', 'aneurysm'].forEach((s) => f.doppler.add(s as StructureId));
+    f.flows.set('aneurysm', 0);
+    f.icg = true;
+    f.flows.set('pcom', 0); // the clip caught the PCom
+    run(p, facts);
+    expect(p.finished).toBe(false);
+    f.flows.set('pcom', 1);
+    f.dopplerCurrent = false; // checks were made before the clip was repositioned
+    run(p, facts);
+    expect(p.finished).toBe(false);
+    f.dopplerCurrent = true;
+    f.flows.set('aneurysm', 0.6); // the dome still fills
+    run(p, facts);
+    expect(p.finished).toBe(false);
+    f.flows.set('aneurysm', 0);
+    run(p, facts);
+    expect(p.finished).toBe(true);
   });
 
   it('the clip stage waits for the temporary clip to come off', () => {

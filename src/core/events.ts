@@ -66,7 +66,10 @@ export interface SimEvents {
   clipRemoved: { id: number };
   tempClipApplied: { structure: StructureId; pose: ClipPose };
   tempClipRemoved: void;
-  dopplerContact: { structure: StructureId | null };
+  /** Doppler probe pressed on a structure (null = lifted); `flow` is what it hears, 0..1. */
+  dopplerContact: { structure: StructureId | null; flow: number };
+  /** ICG videoangiography was run. */
+  icgRun: void;
   /** A structure was identified (inspected long enough) for the first time. */
   identified: { structure: StructureId };
   /** Stage `index` (0-based) completed; `next` is the new current stage or null when done. */

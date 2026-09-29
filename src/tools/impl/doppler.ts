@@ -1,3 +1,4 @@
+import type { Vector3 } from 'three';
 import { events, type StructureId } from '../../core/events';
 import type { Heart } from '../../core/heart';
 import { buildDopplerProbe } from '../instruments';
@@ -19,11 +20,8 @@ export class DopplerTool implements Tool {
   readonly ignores = new Set<StructureId>(['adhesion', 'csf']);
   private contact: StructureId | null = null;
 
-  /**
-   * Flow (0..1) in a structure. Everything flows for now; M5 plugs in the flow model so
-   * clipped or occluded vessels fall silent.
-   */
-  flowOf: (s: StructureId) => number = () => 1;
+  /** Flow (0..1) heard at a point on a structure — supplied by the flow model. */
+  flowOf: (s: StructureId, point: Vector3) => number = () => 1;
 
   constructor(
     private readonly ctx: ToolContext,
@@ -36,11 +34,11 @@ export class DopplerTool implements Tool {
 
   update(_dt: number, hit: PointerHit | null, pressed: boolean): void {
     const s = pressed && hit && (isArtery(hit.structure) || isSac(hit.structure)) ? hit.structure : null;
+    const level = s && hit ? this.flowOf(s, hit.point) : 0;
     if (s !== this.contact) {
       this.contact = s;
-      events.emit('dopplerContact', { structure: s });
+      events.emit('dopplerContact', { structure: s, flow: level });
     }
-    const level = s ? this.flowOf(s) : 0;
     // Flow inside an aneurysm sac is swirling and turbulent.
     this.ctx.audio.setDoppler(level, this.heart.pulse, s !== null && isSac(s));
   }
@@ -48,5 +46,6 @@ export class DopplerTool implements Tool {
   deactivate(): void {
     this.contact = null;
     this.ctx.audio.setDoppler(0, 0);
+    events.emit('dopplerContact', { structure: null, flow: 0 });
   }
 }

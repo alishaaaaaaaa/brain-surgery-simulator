@@ -80,20 +80,17 @@ describe('rupture', () => {
     expect(bleeding.layer.visible).toBe(true);
   });
 
-  it('a temporary clip on the ICA slows it; a clip across the neck stops it', () => {
+  it('bleeds in proportion to sac flow and is secured once the sac is shut', () => {
     const { bleeding, complications } = setup();
     complications.rupture();
-    events.emit('tempClipApplied', { structure: 'ica', pose: {} as never });
-    expect(bleeding.currentRate).toBeCloseTo(sim.bleeding.ruptureRate * sim.bleeding.ruptureWithTempClip);
-    let clipped = false;
-    bleeding.neckClipped = () => clipped;
+    bleeding.sacFlow = sim.flow.collateral; // e.g. temporary clip on the ICA
+    expect(bleeding.currentRate).toBeCloseTo(sim.bleeding.ruptureRate * sim.flow.collateral);
     run(bleeding, 1);
     expect(bleeding.activeCount).toBe(1);
-    clipped = true;
+    bleeding.sacFlow = 0; // neck clipped
     run(bleeding, 0.1);
     expect(bleeding.activeCount).toBe(0);
     expect(state.ruptureSecured).toBe(true);
-    events.emit('tempClipRemoved');
   });
 
   it('the field only counts as cleared after suction is actually used', () => {

@@ -62,10 +62,12 @@ export class Bleeding {
 
   /** Total blood removed by suction (mL). */
   aspirated = 0;
-  /** How much of the ICA inflow reaches the aneurysm (temporary clip lowers it). */
-  inflow = 1;
-  /** Whether the neck is clipped (stops a rupture). Supplied by the clip tracker. */
-  neckClipped: () => boolean = () => false;
+  /**
+   * Relative flow into the aneurysm sac and into the arteries, from the flow model.
+   * A temporary ICA clip lowers both; a clip that closes the neck stops sac flow.
+   */
+  sacFlow = 1;
+  arterialFlow = 1;
 
   constructor() {
     this.group.name = 'bleeding';
@@ -115,8 +117,9 @@ export class Bleeding {
 
   private effectiveRate(p: BleedPoint): number {
     if (!p.active) return 0;
-    // Arterial and rupture bleeding scale with inflow; ooze is venous/capillary.
-    return p.kind === 'ooze' ? p.rate : p.rate * this.inflow;
+    // Arterial and rupture bleeding scale with the flow feeding them; ooze is venous/capillary.
+    if (p.kind === 'ooze') return p.rate;
+    return p.rate * (p.kind === 'rupture' ? this.sacFlow : this.arterialFlow);
   }
 
   start(kind: BleedKind, position: Vector3, normal: Vector3): BleedPoint {
@@ -173,9 +176,9 @@ export class Bleeding {
   }
 
   update(dt: number, pulse: number): void {
-    // A clip across the neck secures a rupture.
+    // A clip that closes the neck (no more flow into the sac) secures a rupture.
     for (const p of this.points) {
-      if (p.active && p.kind === 'rupture' && this.neckClipped()) {
+      if (p.active && p.kind === 'rupture' && this.sacFlow < sim.flow.silentBelow) {
         this.stop(p, 'clip');
         state.ruptureSecured = true;
         events.emit('ruptureSecured');
@@ -218,7 +221,7 @@ export class Bleeding {
       const src = active[Math.floor(Math.random() * active.length)];
       const i = this.nextParticle;
       this.nextParticle = (i + 1) % MAX_PARTICLES;
-      const speed = src.kind === 'ooze' ? 3 : 25 + 30 * Math.random() * this.inflow;
+      const speed = src.kind === 'ooze' ? 3 : 25 + 30 * Math.random() * (src.kind === 'rupture' ? this.sacFlow : this.arterialFlow);
       const jitter = src.kind === 'ooze' ? 0.8 : 0.35;
       const dir = src.normal
         .clone()

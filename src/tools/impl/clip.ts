@@ -17,6 +17,22 @@ const MAX_PERMANENT = 3;
 let nextId = 1;
 
 /**
+ * Clip pose for an aim point. The applier comes in from the surgeon's right hand, obliquely
+ * down the corridor (like the other instruments), so the clip is seen from the side rather
+ * than end-on. `roll` turns the closing direction around the insertion axis (degrees);
+ * `depth` advances the blades along it (mm).
+ */
+export function clipPoseFromView(aim: Vector3, camera: Camera, roll: number, depth: number): ClipPose {
+  const sight = aim.clone().sub(camera.position).normalize();
+  const right = new Vector3().setFromMatrixColumn(camera.matrixWorld, 0);
+  const up = new Vector3().setFromMatrixColumn(camera.matrixWorld, 1);
+  const bladeDir = sight.clone().addScaledVector(up, 0.42).addScaledVector(right, -0.3).normalize();
+  const closing = right.clone().addScaledVector(bladeDir, -right.dot(bladeDir)).normalize();
+  closing.applyAxisAngle(bladeDir, (roll * Math.PI) / 180);
+  return { position: aim.clone().addScaledVector(bladeDir, depth), bladeDir, closingDir: closing };
+}
+
+/**
  * Clip applier (permanent aneurysm clip, or temporary clip for proximal control).
  *
  * The clip is inserted along the microscope's line of sight. Before applying:
@@ -91,19 +107,9 @@ export class ClipTool implements Tool {
     return null;
   }
 
-  /**
-   * Pose of the clip for the current cursor hit. The applier comes in from the surgeon's
-   * right hand, obliquely down the corridor (like the other instruments), so the clip is
-   * seen from the side rather than end-on.
-   */
+  /** Pose of the clip for the current cursor hit. */
   private poseFor(hit: PointerHit, camera: Camera): ClipPose {
-    const sight = hit.point.clone().sub(camera.position).normalize();
-    const right = new Vector3().setFromMatrixColumn(camera.matrixWorld, 0);
-    const up = new Vector3().setFromMatrixColumn(camera.matrixWorld, 1);
-    const bladeDir = sight.clone().addScaledVector(up, 0.42).addScaledVector(right, -0.3).normalize();
-    const closing = right.clone().addScaledVector(bladeDir, -right.dot(bladeDir)).normalize();
-    closing.applyAxisAngle(bladeDir, (this.roll * Math.PI) / 180);
-    return { position: hit.point.clone().addScaledVector(bladeDir, this.depth), bladeDir, closingDir: closing };
+    return clipPoseFromView(hit.point, camera, this.roll, this.depth);
   }
 
   private applyPose(model: Group, pose: ClipPose): void {

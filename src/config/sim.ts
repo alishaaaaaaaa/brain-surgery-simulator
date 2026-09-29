@@ -68,8 +68,6 @@ export const sim = {
     ruptureThreshold: [0.45, 0.75] as [number, number],
     /** Arterial bleeding from a ruptured aneurysm with full ICA inflow. */
     ruptureRate: 4,
-    /** Fraction of rupture bleeding left with a temporary clip on the ICA (back-bleeding via the PCom). */
-    ruptureWithTempClip: 0.15,
     /** Injured artery (cut or coagulated). */
     arterialRate: 1.2,
     /** Pial or small-vessel ooze. */
@@ -82,6 +80,28 @@ export const sim = {
     levelPerMl: 0.19,
     /** Bipolar reach: bleed points this close to the tips are coagulated (mm). */
     bipolarReach: 2.2,
+  },
+
+  /** Flow model. */
+  flow: {
+    /** Flow that still reaches territory beyond a blocked ICA via collaterals (fraction). */
+    collateral: 0.2,
+    /** PCom flow when the ICA is blocked below its origin (it fills backwards from the PCA). */
+    pcomRetrograde: 0.7,
+    /** After clipping, the dome counts as "silent" on Doppler below this flow. */
+    silentBelow: 0.1,
+    /** A vessel counts as "flowing" on Doppler above this flow. */
+    flowingAbove: 0.5,
+  },
+
+  /** ICG videoangiography timing (s). */
+  icg: {
+    /** Bolus arrival in the ICA after injection. */
+    arrival: 0.8,
+    /** Time for dye to travel the length of a vessel at normal flow. */
+    transit: 1.1,
+    /** How long the fluorescence view stays on. */
+    duration: 16,
   },
 
   /** Physiology (anaesthetised adult, ~5 L blood volume). */

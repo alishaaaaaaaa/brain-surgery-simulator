@@ -24,12 +24,22 @@ export interface TrackerSources {
 export class Tracker implements Facts {
   private readonly dwellTime = new Map<StructureId, number>();
   private readonly identified = new Set<StructureId>();
-  private readonly doppler = new Set<StructureId>();
+  private readonly dopplerChecks = new Map<StructureId, { flow: number; version: number }>();
+  /** Bumped whenever a clip is applied or removed: earlier checks become stale. */
+  private clipVersion = 0;
+  private icgVersion = -1;
 
   constructor(private readonly src: TrackerSources) {
-    events.on('dopplerContact', ({ structure }) => {
-      if (structure) this.doppler.add(structure);
+    events.on('dopplerContact', ({ structure, flow }) => {
+      // The bleb is part of the sac: a check there is a check of the dome.
+      if (structure) this.dopplerChecks.set(structure === 'bleb' ? 'aneurysm' : structure, { flow, version: this.clipVersion });
     });
+    const bump = () => this.clipVersion++;
+    events.on('clipApplied', bump);
+    events.on('clipRemoved', bump);
+    events.on('tempClipApplied', bump);
+    events.on('tempClipRemoved', bump);
+    events.on('icgRun', () => (this.icgVersion = this.clipVersion));
   }
 
   /** Accumulate dwell on the structure under the cursor. */
@@ -58,8 +68,13 @@ export class Tracker implements Facts {
     return this.dwellTime.get(s) ?? 0;
   }
 
-  dopplerTouched(s: StructureId): boolean {
-    return this.doppler.has(s);
+  doppler(s: StructureId): { flow: number; current: boolean } | null {
+    const d = this.dopplerChecks.get(s);
+    return d ? { flow: d.flow, current: d.version === this.clipVersion } : null;
+  }
+
+  icgSinceClipChange(): boolean {
+    return this.icgVersion === this.clipVersion;
   }
 
   adhesionFreed(id: string): boolean {

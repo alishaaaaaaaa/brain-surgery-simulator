@@ -8,24 +8,66 @@ export interface LabelAnchor {
   position: Vector3;
 }
 
-/** Anatomy labels (toggle with L). Each is a small tag with a leader dot, drawn in HTML. */
-export function buildLabels(anchors: LabelAnchor[]): Group {
-  const group = new Group();
-  group.name = 'labels';
-  for (const a of anchors) {
-    const el = document.createElement('div');
-    el.className = 'anat-label';
-    const text = document.createElement('span');
-    text.dataset.i18n = a.key;
-    el.append(document.createElement('i'), text);
-    applyTranslations(el);
-    const obj = new CSS2DObject(el);
-    obj.position.copy(a.position);
-    obj.center.set(0, 0.5);
-    group.add(obj);
+/**
+ * Anatomy labels, drawn in HTML. All labels toggle with L; a single label can also be
+ * flashed for a few seconds (e.g. when a structure is identified).
+ */
+export class Labels {
+  readonly group = new Group();
+  private all = false;
+  private readonly flashing = new Map<string, number>();
+
+  constructor(anchors: LabelAnchor[]) {
+    this.group.name = 'labels';
+    for (const a of anchors) {
+      const el = document.createElement('div');
+      el.className = 'anat-label';
+      const text = document.createElement('span');
+      text.dataset.i18n = a.key;
+      el.append(document.createElement('i'), text);
+      applyTranslations(el);
+      const obj = new CSS2DObject(el);
+      obj.position.copy(a.position);
+      obj.center.set(0, 0.5);
+      obj.userData.key = a.key;
+      this.group.add(obj);
+    }
+    // Labels may not be attached to the document yet, so translate them directly.
+    events.on('languageChanged', () => this.group.children.forEach((o) => applyTranslations((o as CSS2DObject).element)));
+    this.apply();
   }
-  group.visible = false;
-  // Labels may not be attached to the document yet, so translate them directly.
-  events.on('languageChanged', () => group.children.forEach((o) => applyTranslations((o as CSS2DObject).element)));
-  return group;
+
+  get showingAll(): boolean {
+    return this.all;
+  }
+
+  toggleAll(): void {
+    this.all = !this.all;
+    this.apply();
+  }
+
+  /** Show one label for `seconds` (if it exists). */
+  flash(key: string, seconds = 3): void {
+    if (!this.group.children.some((o) => o.userData.key === key)) return;
+    this.flashing.set(key, seconds);
+    this.apply();
+  }
+
+  update(dt: number): void {
+    if (!this.flashing.size) return;
+    for (const [k, t] of this.flashing) {
+      if (t - dt <= 0) this.flashing.delete(k);
+      else this.flashing.set(k, t - dt);
+    }
+    if (!this.flashing.size) this.apply();
+  }
+
+  private apply(): void {
+    for (const o of this.group.children) {
+      const on = this.all || this.flashing.has(o.userData.key as string);
+      o.visible = on;
+      (o as CSS2DObject).element.classList.toggle('is-flash', !this.all && on);
+    }
+    this.group.visible = this.all || this.flashing.size > 0;
+  }
 }

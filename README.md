@@ -27,6 +27,7 @@ npm run build      # typecheck + production bundle
 | Wheel / `+` `−` | Zoom |
 | `L` | Anatomy labels |
 | `R` | Reset view |
+| `H` | Show / hide the controls help |
 
 Instruments: `1` suction · `2` micro scissors · `3` bipolar · `4` dissector · `5` spatula ·
 `6` aneurysm clip (`Q`/`E` rotate, `[` `]` blade depth, `C` straight/curved) · `7` ICG ·

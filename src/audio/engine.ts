@@ -135,6 +135,13 @@ export class AudioEngine {
     this.burst(0.04, 1800, 4, 0.35);
   }
 
+  /** Gentle rising chime when a procedure step is completed. */
+  chime(): void {
+    this.tone(660, 0.35, 0.06);
+    this.tone(880, 0.45, 0.06, 'sine', 0.12);
+    this.tone(1320, 0.6, 0.04, 'sine', 0.24);
+  }
+
   /** Soft two-tone cue for a caution message. */
   caution(): void {
     this.tone(660, 0.12, 0.07);

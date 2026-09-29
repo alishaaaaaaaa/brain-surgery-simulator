@@ -1,5 +1,6 @@
+import { events } from '../core/events';
 import { h, tr } from './dom';
-import { applyTranslations } from './i18n';
+import { applyTranslations, t } from './i18n';
 import { langToggle } from './langToggle';
 
 export interface Hud {
@@ -7,15 +8,16 @@ export interface Hud {
 }
 
 /**
- * Minimal M1 heads-up display: title + language, microscope readouts, control help.
- * Space is kept free for the later panels: checklist (left), vitals (top right),
+ * Heads-up display: title + language + help button, microscope readouts, and the
+ * (collapsible) controls help. Other panels: checklist (left), vitals (top right, M4),
  * toolbar (bottom), mentor (bottom right).
  */
 export function mountHud(root: HTMLElement): Hud {
   const zoom = h('span', { class: 'v' }, '—');
   const focus = h('span', { class: 'v' }, '—');
 
-  const brand = h('div', { class: 'hud-brand panel' }, tr('span', 'app.title', { class: 'title' }), langToggle());
+  const helpBtn = h('button', { type: 'button', class: 'help-btn', 'aria-expanded': 'false' }, '?');
+  const brand = h('div', { class: 'hud-brand panel' }, tr('span', 'app.title', { class: 'title' }), langToggle(), helpBtn);
   const top = h(
     'div',
     { class: 'hud-top panel', 'aria-live': 'off' },
@@ -24,7 +26,7 @@ export function mountHud(root: HTMLElement): Hud {
   );
   const help = h(
     'div',
-    { class: 'hud-help panel' },
+    { class: 'hud-help panel', hidden: '' },
     tr('h2', 'hud.controls.title'),
     h(
       'ul',
@@ -38,11 +40,26 @@ export function mountHud(root: HTMLElement): Hud {
       tr('li', 'hud.controls.labels'),
       tr('li', 'hud.controls.reset'),
       tr('li', 'hud.controls.focus'),
+      tr('li', 'hud.controls.help'),
     ),
     tr('div', 'hud.milestone', { class: 'milestone' }),
   );
   root.append(brand, top, help);
   applyTranslations(root);
+
+  // Controls help: hidden by default (the checklist lives here); H or ? toggles it.
+  const setHelp = (open: boolean) => {
+    help.hidden = !open;
+    helpBtn.setAttribute('aria-expanded', String(open));
+    helpBtn.title = t('hud.help');
+  };
+  helpBtn.addEventListener('click', () => setHelp(help.hidden));
+  window.addEventListener('keydown', (e) => {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    if (e.key.toLowerCase() === 'h') setHelp(help.hidden);
+  });
+  events.on('languageChanged', () => setHelp(!help.hidden));
+  setHelp(false);
 
   return {
     setReadouts(mag, depth) {

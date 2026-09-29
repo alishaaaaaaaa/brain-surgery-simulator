@@ -12,6 +12,8 @@ export interface ArachnoidPatch {
   mesh: Mesh;
   sheet: string;
   index: number;
+  /** Centre of the segment along the fissure (mm). */
+  centerX: number;
   cut: boolean;
   /** Time since the cut (s), drives the recoil animation. */
   cutT: number;
@@ -77,6 +79,7 @@ export function buildArachnoid(): { group: Group; patches: ArachnoidPatch[] } {
         mesh,
         sheet: sheet.id,
         index: s,
+        centerX: x0 + segW / 2,
         cut: false,
         cutT: 0,
         cutU: 0,

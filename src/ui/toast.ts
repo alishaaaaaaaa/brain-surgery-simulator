@@ -18,11 +18,16 @@ export class Toasts {
   }
 
   show(key: I18nKey, level: ToastLevel = 'info', holdMs = 2600): void {
+    this.showText(t(key), level, holdMs, key);
+  }
+
+  /** Show already-translated text (e.g. with interpolated names). */
+  showText(text: string, level: ToastLevel = 'info', holdMs = 2600, dedupeKey = text): void {
     const now = performance.now();
-    if ((this.recent.get(key) ?? -Infinity) > now - 2500) return;
-    this.recent.set(key, now);
+    if ((this.recent.get(dedupeKey) ?? -Infinity) > now - 2500) return;
+    this.recent.set(dedupeKey, now);
     if (level === 'caution' || level === 'danger') this.onCaution?.();
-    const item = h('div', { class: `toast toast-${level}` }, t(key));
+    const item = h('div', { class: `toast toast-${level}` }, text);
     this.el.prepend(item);
     while (this.el.children.length > 3) this.el.lastElementChild?.remove();
     requestAnimationFrame(() => item.classList.add('is-in'));

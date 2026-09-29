@@ -67,6 +67,10 @@ export interface SimEvents {
   tempClipApplied: { structure: StructureId; pose: ClipPose };
   tempClipRemoved: void;
   dopplerContact: { structure: StructureId | null };
+  /** A structure was identified (inspected long enough) for the first time. */
+  identified: { structure: StructureId };
+  /** Stage `index` (0-based) completed; `next` is the new current stage or null when done. */
+  stageCompleted: { index: number; id: string; time: number; next: number | null };
 }
 
 type Handler<T> = (payload: T) => void;

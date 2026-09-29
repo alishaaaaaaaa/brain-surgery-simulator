@@ -10,8 +10,11 @@ import { microscope } from './config/anatomy';
 import { sim } from './config/sim';
 import { events } from './core/events';
 import { Heart } from './core/heart';
+import { clock } from './core/clock';
 import { state } from './core/state';
 import { Fluids } from './physics/fluids';
+import { Procedure } from './procedure/procedure';
+import { Tracker } from './procedure/tracker';
 import { Autofocus } from './scene/autofocus';
 import { MicroscopeLight } from './scene/lighting';
 import { MicroscopeControls } from './scene/microscopeControls';
@@ -28,7 +31,9 @@ import { SuctionTool } from './tools/impl/suction';
 import { ToolManager } from './tools/toolManager';
 import type { ToolContext } from './tools/types';
 import { mountHud } from './ui/hud';
-import { getLang } from './ui/i18n';
+import { mountChecklist } from './ui/checklist';
+import { getLang, t, type I18nKey } from './ui/i18n';
+import { mountMentor } from './ui/mentor';
 import { showStartScreen } from './ui/startScreen';
 import { Toasts } from './ui/toast';
 import { mountToolbar } from './ui/toolbar';
@@ -114,20 +119,51 @@ tools = new ToolManager(
   scene,
 );
 
+// --- Procedure ---------------------------------------------------------------
+const procedure = new Procedure();
+const tracker = new Tracker({
+  arachnoid: anatomy.arachnoid,
+  adhesions: anatomy.adhesions,
+  aneurysm: anatomy.aneurysm,
+  clips: () => clipTool.placed,
+  tempClips: () => tempClipTool.placed,
+});
+
+// Identifying a structure briefly shows its label, so the learner can check themselves.
+events.on('identified', ({ structure }) => {
+  const key = `anat.${structure}`;
+  anatomy.labels.flash(key, 3);
+  // Only announce structures that matter for the procedure (not every brain surface glance).
+  if (['m1', 'ica', 'opticNerve', 'pcom', 'acha', 'a1', 'oculomotorNerve', 'aneurysm'].includes(structure)) {
+    toasts.showText(t('toast.identified', { name: t(key as I18nKey) }), 'info', 1800);
+  }
+});
+events.on('stageCompleted', ({ id, next }) => {
+  const stage = procedure.stages.find((s) => s.def.id === id)!;
+  audio.chime();
+  toasts.showText(t('toast.stageDone', { name: t(stage.def.titleKey) }), 'success', 3000);
+  if (next === null) toasts.show('toast.procedureDone', 'success', 4000);
+});
+
 // --- UI --------------------------------------------------------------------
 let hud: ReturnType<typeof mountHud> | null = null;
 let toolbar: ReturnType<typeof mountToolbar> | null = null;
+let checklist: ReturnType<typeof mountChecklist> | null = null;
+let mentor: ReturnType<typeof mountMentor> | null = null;
 showStartScreen(uiRoot, () => {
   audio.unlock();
   hud = mountHud(uiRoot);
+  checklist = mountChecklist(uiRoot, procedure);
+  mentor = mountMentor(uiRoot, procedure);
   toolbar = mountToolbar(uiRoot, tools, clipTool);
+  clock.running = true;
   events.emit('started');
 });
 
 window.addEventListener('keydown', (e) => {
   if (e.metaKey || e.ctrlKey || e.altKey) return;
   const key = e.key.toLowerCase();
-  if (key === 'l') anatomy.labels.visible = !anatomy.labels.visible;
+  if (key === 'l') anatomy.labels.toggleAll();
   // R resets the view unless a tool uses the key.
   if (key === 'r') controls.reset();
 });
@@ -152,6 +188,7 @@ renderer.setAnimationLoop((now: number) => {
   const dt = Math.min(0.1, (now - last) / 1000);
   last = now;
 
+  clock.tick(dt);
   heart.update(dt);
   pulseUniform.value = heart.pulse;
 
@@ -159,6 +196,11 @@ renderer.setAnimationLoop((now: number) => {
   tools.update(dt);
   updateArachnoid(anatomy.arachnoid, dt);
   updateAdhesions(anatomy.adhesions, dt);
+  anatomy.labels.update(dt);
+  if (clock.running) {
+    tracker.update(dt, tools.hit?.structure ?? null);
+    procedure.update(dt, tracker, clock.elapsed);
+  }
   autofocus.update(dt);
   post.setZoom(controls.fov);
   light.update(camera, controls.target);
@@ -171,8 +213,10 @@ renderer.setAnimationLoop((now: number) => {
     hudTimer = 0.1;
     hud.setReadouts(controls.magnification, autofocus.depth);
     toolbar?.refresh();
+    checklist?.refresh();
+    mentor?.refresh();
   }
 });
 
 // Handy for debugging in the browser console (e.g. __sim.state.ruptureRisk).
-Object.assign(window, { __sim: { scene, camera, anatomy, controls, post, heart, tools, state, fluids } });
+Object.assign(window, { __sim: { scene, camera, anatomy, controls, post, heart, tools, state, fluids, procedure, tracker, clock } });

@@ -5,7 +5,7 @@ import { buildAdhesions, type Adhesion } from './adhesions';
 import { buildAneurysm, type AneurysmHandle } from './aneurysm';
 import { buildArachnoid, type ArachnoidPatch } from './arachnoid';
 import { buildFloor, buildLobe } from './brain';
-import { buildLabels } from './labels';
+import { Labels } from './labels';
 import { buildSpatulas, type Spatula } from './spatulas';
 import { buildNerves, buildVesselCurves, buildVessels } from './vessels';
 
@@ -19,7 +19,7 @@ export interface Anatomy {
   arachnoid: ArachnoidPatch[];
   adhesions: Adhesion[];
   spatulas: Spatula[];
-  labels: Group;
+  labels: Labels;
   /** Meshes the cursor can hit (for autofocus now, tool interaction from M2). */
   pickables: Object3D[];
 }
@@ -51,7 +51,7 @@ export function buildAnatomy(): Anatomy {
 
   const at = (id: VesselId, t: number) => vesselCurves.get(id)!.getPointAt(t);
   const b = anatomy.brain;
-  const labels = buildLabels([
+  const labels = new Labels([
     { key: 'anat.ica', position: at('ica', 0.35) },
     { key: 'anat.m1', position: at('m1', 0.5) },
     { key: 'anat.m2Superior', position: at('m2Superior', 0.6) },
@@ -68,7 +68,7 @@ export function buildAnatomy(): Anatomy {
     { key: 'anat.sylvianFissure', position: new Vector3(24, b.corridorCenterY + 4, -6) },
   ]);
 
-  root.add(frontal, temporal, floor, vesselGroup, nerveGroup, aneurysm.group, adhesionGroup, arachnoidGroup, spatulaGroup, labels);
+  root.add(frontal, temporal, floor, vesselGroup, nerveGroup, aneurysm.group, adhesionGroup, arachnoidGroup, spatulaGroup, labels.group);
 
   const pickables: Object3D[] = [
     frontal,

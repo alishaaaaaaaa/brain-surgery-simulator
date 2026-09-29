@@ -36,6 +36,24 @@ export const sim = {
     reach: 1.5,
   },
 
+  procedure: {
+    /** Seconds the cursor must rest on a structure to identify it. */
+    identifyDwell: 1.2,
+    /**
+     * The part of each arachnoid sheet that must be opened (x range, mm): the working
+     * window over the carotid–sylvian region, not the whole fissure.
+     */
+    window: {
+      superficial: [-22, 30],
+      middle: [-15, 30],
+      deep: [-15, 10],
+    } as Record<string, [number, number]>,
+    /** A clip counts as "across the neck" if its blade midpoint is this close to the neck (mm, beyond the neck radius). */
+    clipNeckTolerance: 2.5,
+    /** Pause before the next stage unlocks, so the completion is noticed (s). */
+    advanceDelay: 1.2,
+  },
+
   retraction: {
     /** Retraction pressure above which a warning is shown (0..1). */
     warnAbove: 0.7,

@@ -333,3 +333,132 @@ button:focus-visible { outline: 1px solid var(--accent); outline-offset: 2px; }
   .tool-label { display: none; }
   .tool-info { flex-wrap: wrap; }
 }
+
+/* ---------- Help button ---------- */
+.help-btn {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 20px;
+  color: var(--muted);
+}
+.help-btn[aria-expanded='true'] { color: var(--bg); background: var(--accent); border-color: var(--accent); }
+.hud-help { z-index: 3; }
+.hud-help[hidden] { display: none; }
+
+/* ---------- Checklist (left) ---------- */
+.checklist {
+  position: fixed;
+  top: 52px;
+  left: 12px;
+  width: 256px;
+  padding: 10px 10px 8px;
+}
+.checklist header,
+.mentor header {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.checklist h2,
+.mentor h2 {
+  margin: 0;
+  flex: 1;
+  font-size: 10px;
+  font-family: var(--mono);
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text);
+}
+.checklist .pct,
+.mentor .pct { color: var(--accent); font-size: 11px; }
+.checklist ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.checklist li {
+  display: grid;
+  grid-template-columns: 18px 1fr auto;
+  align-items: start;
+  gap: 8px;
+  padding: 6px 6px;
+  border-radius: 3px;
+  border: 1px solid transparent;
+  font-size: 12px;
+  line-height: 1.3;
+}
+.checklist .idx {
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  font-size: 10px;
+  color: var(--muted);
+}
+.checklist .name { display: flex; flex-direction: column; gap: 5px; }
+.checklist .meta { font-size: 10.5px; color: var(--muted); padding-top: 2px; }
+.checklist .bar { display: none; height: 2px; background: rgba(150, 215, 205, 0.15); border-radius: 1px; overflow: hidden; }
+.checklist .bar i { display: block; height: 100%; background: var(--accent); transition: width 0.3s ease; }
+.checklist li.is-current { border-color: var(--border-strong); background: rgba(95, 224, 198, 0.06); }
+.checklist li.is-current .idx { border-color: var(--accent); color: var(--accent); }
+.checklist li.is-current .bar { display: block; }
+.checklist li.is-current .meta { color: var(--accent); }
+.checklist li.is-done .idx { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+.checklist li.is-done .name { color: var(--muted); }
+.checklist li.is-locked { opacity: 0.45; }
+
+/* ---------- Mentor (bottom right) ---------- */
+.mentor {
+  position: fixed;
+  right: 12px;
+  bottom: 124px;
+  width: min(340px, calc(100vw - 24px));
+  padding: 10px 12px 12px;
+}
+.mentor .step { color: var(--muted); font-size: 10.5px; }
+.mentor .collapse {
+  width: 22px;
+  height: 20px;
+  padding: 0;
+  line-height: 18px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.mentor.is-collapsed { padding-bottom: 4px; }
+.mentor.is-collapsed header { margin-bottom: 4px; }
+.mentor.is-collapsed .body { display: none; }
+.mentor h3 { margin: 0 0 4px; font-size: 13px; font-weight: 600; }
+.mentor p { margin: 0 0 10px; color: #b9c8c5; line-height: 1.5; font-size: 12px; }
+.mentor .tasks { list-style: none; margin: 0 0 10px; padding: 0; display: flex; flex-direction: column; gap: 5px; }
+.mentor .tasks li { display: grid; grid-template-columns: 16px 1fr auto; gap: 8px; align-items: center; font-size: 12px; }
+.mentor .box {
+  width: 14px;
+  height: 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: 2px;
+  display: grid;
+  place-items: center;
+  font-size: 10px;
+  line-height: 1;
+}
+.mentor .tasks li.is-done { color: var(--muted); }
+.mentor .tasks li.is-done .box { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+.mentor .frac { color: var(--accent); font-size: 10.5px; }
+.mentor .progress { height: 3px; background: rgba(150, 215, 205, 0.15); border-radius: 2px; overflow: hidden; }
+.mentor .progress i { display: block; height: 100%; background: var(--accent); transition: width 0.3s ease; }
+
+/* A label flashed on identification */
+.anat-label.is-flash span { border-color: var(--accent); animation: label-in 0.35s ease-out; }
+@keyframes label-in { from { opacity: 0; transform: translateX(-4px); } to { opacity: 1; transform: none; } }
+
+@media (max-width: 1100px) {
+  .checklist { width: 210px; }
+  .checklist .meta { display: none; }
+}
+@media (max-width: 760px) {
+  .checklist { display: none; }
+  .mentor { bottom: auto; top: 52px; }
+}

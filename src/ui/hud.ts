@@ -44,9 +44,10 @@ export function mountHud(root: HTMLElement, audio: AudioEngine): Hud {
       tr('li', 'hud.controls.reset'),
       tr('li', 'hud.controls.focus'),
       tr('li', 'hud.controls.mute'),
+      tr('li', 'demo.hint'),
       tr('li', 'hud.controls.help'),
     ),
-    tr('div', 'hud.milestone', { class: 'milestone' }),
+    tr('div', 'hud.version', { class: 'milestone' }),
   );
   root.append(brand, top, help);
   applyTranslations(root);

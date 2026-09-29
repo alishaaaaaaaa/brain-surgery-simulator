@@ -13,6 +13,8 @@ export class Autofocus {
   private frame = 0;
   /** Depth of focus below the cortical surface (mm), for the HUD. */
   depth = 0;
+  /** Demo mode: focus on this point instead of what is under the mouse. */
+  override: Vector3 | null = null;
 
   constructor(
     private readonly camera: PerspectiveCamera,
@@ -33,7 +35,9 @@ export class Autofocus {
 
   update(dt: number): void {
     // Raycasting the dense brain meshes every frame is wasteful; every 3rd frame is plenty.
-    if (this.frame++ % 3 === 0) {
+    if (this.override) {
+      this.goal.copy(this.override);
+    } else if (this.frame++ % 3 === 0) {
       this.raycaster.setFromCamera(this.hasPointer ? this.ndc : new Vector2(0, 0), this.camera);
       const hit = this.raycaster.intersectObjects(this.pickables.filter((o) => o.visible), false)[0];
       this.goal.copy(hit ? hit.point : this.fallback);

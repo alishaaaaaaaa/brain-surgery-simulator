@@ -17,15 +17,24 @@ export const state = {
   /** Blood currently lying in the field (mL). */
   fieldBlood: 0,
   /** Temporary ICA occlusion: current episode and cumulative time (s). */
-  tempOcclusion: { active: false, current: 0, total: 0 },
+  tempOcclusion: { active: false, current: 0, total: 0, longest: 0 },
+  /** Where the rupture risk came from (for the debrief). */
+  riskBySource: {} as Partial<Record<RiskSource, number>>,
+  /** Worst values seen during the case (for the debrief). */
+  peakRetraction: 0,
+  minMep: 100,
+  minMap: 200,
   /** Retraction pressure per spatula, 0..1. */
   retraction: { frontal: 0, temporal: 0 },
   injuries: 0,
   coagulations: 0,
 };
 
-export function addRuptureRisk(amount: number): void {
+export type RiskSource = 'dissector' | 'suction' | 'bipolar' | 'scissors' | 'domeAdhesion';
+
+export function addRuptureRisk(amount: number, source: RiskSource): void {
   if (amount <= 0) return;
+  state.riskBySource[source] = (state.riskBySource[source] ?? 0) + amount;
   state.ruptureRisk = Math.min(1, state.ruptureRisk + amount);
   events.emit('ruptureRiskChanged', { value: state.ruptureRisk });
 }

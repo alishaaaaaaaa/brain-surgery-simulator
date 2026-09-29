@@ -16,7 +16,12 @@ const STORAGE_KEY = 'sim.mentorCollapsed';
  * Bottom-right mentor: a short, calm instruction for the current step, its sub-tasks as
  * checkboxes, and a progress percentage. Collapsible (remembered per browser).
  */
-export function mountMentor(root: HTMLElement, procedure: Procedure, emergency: () => Emergency | null = () => null): { refresh(): void } {
+export function mountMentor(
+  root: HTMLElement,
+  procedure: Procedure,
+  emergency: () => Emergency | null = () => null,
+  onEndCase?: () => void,
+): { refresh(): void } {
   const step = h('span', { class: 'step mono' });
   const pct = h('span', { class: 'pct mono' });
   const toggle = h('button', { type: 'button', class: 'collapse', 'aria-expanded': 'true' });
@@ -28,7 +33,9 @@ export function mountMentor(root: HTMLElement, procedure: Procedure, emergency: 
   const alertText = h('p');
   const alertSteps = h('ul', { class: 'tasks' });
   const alert = h('div', { class: 'alert', role: 'alert', hidden: '' }, alertTitle, alertText, alertSteps);
-  const body = h('div', { class: 'body' }, alert, title, text, tasks, h('div', { class: 'progress' }, fill));
+  const endCase = tr('button', 'debrief.endCase', { type: 'button', class: 'end-case' });
+  endCase.addEventListener('click', () => onEndCase?.());
+  const body = h('div', { class: 'body' }, alert, title, text, tasks, h('div', { class: 'progress' }, fill), h('div', { class: 'foot' }, endCase));
   const panel = h(
     'section',
     { class: 'mentor panel', 'aria-label': 'Mentor' },

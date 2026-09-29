@@ -15,7 +15,7 @@ export function freeAdhesion(ad: Adhesion, ctx: ToolContext): void {
   events.emit('adhesionFreed', { id: ad.id, kind: ad.kind });
   if (ad.kind === 'dome') {
     // Peeling the dome off its neighbours pulls on the thinnest part of the wall.
-    addRuptureRisk(sim.ruptureRisk.domeAdhesion);
+    addRuptureRisk(sim.ruptureRisk.domeAdhesion, 'domeAdhesion');
     ctx.toasts.show('toast.domeAdhesion', 'caution', 3200);
   } else {
     const left = ctx.anatomy.adhesions.filter((a) => a.kind === 'neck' && !a.freed).length;
@@ -52,7 +52,7 @@ export class DissectorTool implements Tool {
       if (ad.progress >= 1) freeAdhesion(ad, this.ctx);
     } else if (isSac(hit.structure)) {
       const m = hit.structure === 'bleb' ? sim.ruptureRisk.blebMultiplier : 1;
-      addRuptureRisk(sim.ruptureRisk.dissectorDomePerMm * moved * m);
+      addRuptureRisk(sim.ruptureRisk.dissectorDomePerMm * moved * m, 'dissector');
       this.ctx.toasts.show(hit.structure === 'bleb' ? 'toast.blebTouch' : 'toast.domeTouch', 'caution');
     }
   }

@@ -17,7 +17,7 @@ function resetState() {
     ruptureSecured: false,
     ebl: 0,
     fieldBlood: 0,
-    tempOcclusion: { active: false, current: 0, total: 0 },
+    tempOcclusion: { active: false, current: 0, total: 0, longest: 0 },
   });
 }
 
@@ -58,9 +58,9 @@ describe('rupture', () => {
     const { bleeding, shown } = setup([0.5]);
     const ruptures: Vector3[] = [];
     offs.push(events.on('ruptured', (e) => ruptures.push(e.point)));
-    addRuptureRisk(state.ruptureThreshold - 0.01);
+    addRuptureRisk(state.ruptureThreshold - 0.01, 'dissector');
     expect(state.ruptured).toBe(false);
-    addRuptureRisk(0.02);
+    addRuptureRisk(0.02, 'dissector');
     expect(state.ruptured).toBe(true);
     expect(ruptures).toHaveLength(1);
     // On the bleb's surface (radius ~0.95 mm), pointing away from the dome.

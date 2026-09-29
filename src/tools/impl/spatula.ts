@@ -56,6 +56,7 @@ export class SpatulaTool implements Tool {
   private publish(s: Spatula): void {
     const p = retractionPressure(s.spec);
     state.retraction[s.spec.lobe] = p;
+    state.peakRetraction = Math.max(state.peakRetraction, p);
     events.emit('retractionChanged', { lobe: s.spec.lobe, pressure: p });
     if (p > sim.retraction.warnAbove) this.ctx.toasts.show('toast.retraction', 'caution');
   }

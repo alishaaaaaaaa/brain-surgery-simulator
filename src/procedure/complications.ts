@@ -96,6 +96,7 @@ export class Complications {
     if (o.active) {
       o.current += dt;
       o.total += dt;
+      o.longest = Math.max(o.longest, o.current);
     }
   }
 }

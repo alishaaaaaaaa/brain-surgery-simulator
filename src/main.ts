@@ -18,6 +18,8 @@ import { FlowModel, type FlowState } from './physics/flow';
 import type { ClipGeometry } from './physics/clipEvaluation';
 import { Physiology } from './physics/physiology';
 import { Complications } from './procedure/complications';
+import type { CaseSummary } from './procedure/debrief';
+import { DemoDirector } from './procedure/demo';
 import { Procedure } from './procedure/procedure';
 import { Tracker } from './procedure/tracker';
 import { Autofocus } from './scene/autofocus';
@@ -26,6 +28,7 @@ import { IcgView } from './scene/icg';
 import { MicroscopeLight } from './scene/lighting';
 import { MicroscopeControls } from './scene/microscopeControls';
 import { PostFX } from './scene/postfx';
+import { AdaptiveQuality } from './scene/quality';
 import { createRenderer } from './scene/renderer';
 import { BipolarTool } from './tools/impl/bipolar';
 import { ClipTool } from './tools/impl/clip';
@@ -40,7 +43,8 @@ import { ToolManager } from './tools/toolManager';
 import type { ToolContext } from './tools/types';
 import { mountHud } from './ui/hud';
 import { mountChecklist } from './ui/checklist';
-import { getLang, t, type I18nKey } from './ui/i18n';
+import { DebriefScreen } from './ui/debrief';
+import { applyTranslations, getLang, t, type I18nKey } from './ui/i18n';
 import { mountMentor } from './ui/mentor';
 import { VitalsPanel } from './ui/vitals';
 import { showStartScreen } from './ui/startScreen';
@@ -180,13 +184,82 @@ events.on('stageCompleted', ({ id, next }) => {
   if (next === null) toasts.show('toast.procedureDone', 'success', 4000);
 });
 
+// --- Debrief ---------------------------------------------------------------------
+function caseSummary(): CaseSummary {
+  const o = state.tempOcclusion;
+  return {
+    time: clock.elapsed,
+    ebl: state.ebl,
+    tempOcclusionTotal: o.total,
+    tempOcclusionLongest: o.longest,
+    ruptured: state.ruptured,
+    ruptureSecured: state.ruptureSecured,
+    clip: {
+      applied: clipTool.placed.length > 0,
+      neckClosure: flow.neckClosure,
+      residualNeck: flow.residualNeck,
+      icaStenosis: flow.icaStenosis,
+      pcomOccluded: flow.pcomPinch >= 0.45,
+      achaOccluded: flow.achaPinch >= 0.45,
+    },
+    stagesDone: procedure.stages.filter((s) => s.status === 'done').length,
+    stagesTotal: procedure.stages.length,
+    injuries: state.injuries,
+    peakRetraction: state.peakRetraction,
+    minMep: state.minMep,
+    icgAfterClip: tracker.icgSinceClipChange(),
+    riskBySource: state.riskBySource,
+  };
+}
+const debrief = new DebriefScreen(uiRoot, () => location.reload());
+events.on('languageChanged', () => debrief.refresh());
+// Open the debrief once the last step is done (after any ICG run has finished playing).
+let debriefDue = -1;
+events.on('stageCompleted', ({ next }) => {
+  if (next === null) debriefDue = 2.5;
+});
+
+// --- Demo ----------------------------------------------------------------------------
+const demo = new DemoDirector({
+  anatomy,
+  tools,
+  clipTool,
+  procedure,
+  bleeding,
+  flow: flowModel,
+  controls,
+  autofocus,
+  camera,
+  isIcgActive: () => icg.active,
+});
+const demoBanner = document.createElement('div');
+demoBanner.className = 'demo-banner mono';
+demoBanner.hidden = true;
+demoBanner.dataset.i18n = 'demo.banner';
+uiRoot.append(demoBanner);
+applyTranslations(demoBanner);
+function startDemo(): void {
+  if (demo.running || procedure.finished) return;
+  demoBanner.hidden = false;
+  demo.start();
+}
+demo.onStop = (byUser) => {
+  demoBanner.hidden = true;
+  if (byUser) toasts.show('demo.takeover', 'info', 2200);
+};
+// Any real click in the field or key press takes over from the demo.
+renderer.domElement.addEventListener('pointerdown', () => demo.stop(), { capture: true });
+window.addEventListener('keydown', (e) => {
+  if (demo.running && !e.metaKey && !e.ctrlKey) demo.stop();
+}, { capture: true });
+
 // --- UI --------------------------------------------------------------------
 let hud: ReturnType<typeof mountHud> | null = null;
 let toolbar: ReturnType<typeof mountToolbar> | null = null;
 let checklist: ReturnType<typeof mountChecklist> | null = null;
 let mentor: ReturnType<typeof mountMentor> | null = null;
 let vitals: VitalsPanel | null = null;
-showStartScreen(uiRoot, () => {
+showStartScreen(uiRoot, (withDemo) => {
   audio.unlock();
   hud = mountHud(uiRoot, audio);
   checklist = mountChecklist(uiRoot, procedure);
@@ -202,11 +275,13 @@ showStartScreen(uiRoot, () => {
           ],
         }
       : null,
+    () => debrief.show(caseSummary()),
   );
   vitals = new VitalsPanel(uiRoot, physiology, heart, audio, () => clock.elapsed);
   toolbar = mountToolbar(uiRoot, tools, clipTool);
   clock.running = true;
   events.emit('started');
+  if (withDemo) startDemo();
 });
 
 window.addEventListener('keydown', (e) => {
@@ -216,6 +291,7 @@ window.addEventListener('keydown', (e) => {
   // R resets the view unless a tool uses the key.
   if (key === 'r') controls.reset();
   if (key === 'm') audio.setMuted(!audio.muted);
+  if (key === 'd' && clock.running && !debrief.open) startDemo();
 });
 
 // --- Resize ----------------------------------------------------------------
@@ -233,10 +309,14 @@ resize();
 // --- Main loop -------------------------------------------------------------
 let last = performance.now();
 let hudTimer = 0;
+const quality = new AdaptiveQuality((ratio) => {
+  renderer.setPixelRatio(ratio);
+  resize();
+});
 
-renderer.setAnimationLoop((now: number) => {
-  const dt = Math.min(0.1, (now - last) / 1000);
-  last = now;
+/** Advance the whole simulation by dt seconds (no rendering). */
+function simulate(dt: number): void {
+  demo.update(dt);
 
   clock.tick(dt);
   flow = flowModel.compute(asGeometry(clipTool.placed), asGeometry(tempClipTool.placed));
@@ -251,6 +331,12 @@ renderer.setAnimationLoop((now: number) => {
       perforatorIschemia: flow.perforatorIschemia,
     });
     heart.rate = physiology.hr;
+    state.minMep = Math.min(state.minMep, physiology.mep);
+    state.minMap = Math.min(state.minMap, physiology.map);
+    if (debriefDue > 0 && !icg.active) {
+      debriefDue -= dt;
+      if (debriefDue <= 0) debrief.show(caseSummary());
+    }
   }
   heart.update(dt);
   pulseUniform.value = heart.pulse;
@@ -269,9 +355,16 @@ renderer.setAnimationLoop((now: number) => {
     procedure.update(dt, tracker, clock.elapsed);
   }
   autofocus.update(dt);
+}
+
+renderer.setAnimationLoop((now: number) => {
+  quality.update(now - last);
+  const dt = Math.min(0.1, (now - last) / 1000);
+  last = now;
+  simulate(dt);
+
   post.setZoom(controls.fov);
   light.update(camera, controls.target);
-
   post.render(dt);
   endoscope.render(scene);
   vitals?.update(dt);
@@ -287,5 +380,6 @@ renderer.setAnimationLoop((now: number) => {
   }
 });
 
-// Handy for debugging in the browser console (e.g. __sim.state.ruptureRisk).
-Object.assign(window, { __sim: { scene, camera, anatomy, controls, post, heart, tools, state, fluids, procedure, tracker, clock, bleeding, physiology, complications, flowModel, getFlow: () => flow, icg, endoscope } });
+// Handy for debugging in the browser console (e.g. __sim.state.ruptureRisk, or
+// __sim.simulate(0.1) to step the simulation without waiting for frames).
+Object.assign(window, { __sim: { scene, camera, anatomy, controls, post, heart, tools, state, fluids, procedure, tracker, clock, bleeding, physiology, complications, flowModel, getFlow: () => flow, icg, endoscope, demo, debrief, caseSummary, simulate } });

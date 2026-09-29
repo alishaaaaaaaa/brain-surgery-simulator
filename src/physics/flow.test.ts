@@ -119,17 +119,15 @@ describe('temporary clip and flow', () => {
 });
 
 describe('reachability with the clip tool', () => {
-  it('tilting the microscope (≤ 20°), some rotation/depth the tool offers closes the neck cleanly', async () => {
-    const { PerspectiveCamera, Raycaster } = await import('three');
+  it('tilting the microscope (≤ 20°), the clip tool can reach a clean, complete closure', async () => {
+    const { PerspectiveCamera } = await import('three');
     const { microscope } = await import('../config/anatomy');
-    const { clipPoseFromView } = await import('../tools/impl/clip');
+    const { planClip } = await import('../procedure/clipPlanner');
     const target = new Vector3(...microscope.target);
     const axis = new Vector3(...microscope.viewAxis).normalize();
     const right = new Vector3().crossVectors(axis.clone().negate(), new Vector3(0, 1, 0)).normalize();
     const up = new Vector3().crossVectors(axis, right);
     const m = model();
-    // The learner aims somewhere on the visible surface of the neck / lower sac.
-    const aimHeights = [0.4, 0.9, 1.4, 1.9, 2.4];
 
     const bestFor = (tiltDeg: number, dirAngle: number) => {
       const t = Math.tan((tiltDeg * Math.PI) / 180);
@@ -139,20 +137,7 @@ describe('reachability with the clip tool', () => {
       camera.up.copy(up);
       camera.lookAt(target);
       camera.updateMatrixWorld();
-      let best = 0;
-      for (const h of aimHeights) {
-        const aim = aneurysm.neckCenter.clone().addScaledVector(a, h);
-        const hit = new Raycaster(camera.position, aim.clone().sub(camera.position).normalize()).intersectObject(aneurysm.dome, false)[0];
-        if (!hit) continue;
-        for (let roll = 0; roll < 360; roll += 10) {
-          for (let depth = -4; depth <= 4; depth += 0.5) {
-            const s = m.compute([{ pose: clipPoseFromView(hit.point, camera, roll, depth), length: 7, kind: 'permanent' }], []);
-            const clean = s.icaStenosis < 0.3 && s.pcomPinch < 0.3 && s.achaPinch < 0.3 && s.residualNeck < 0.5;
-            if (clean) best = Math.max(best, s.neckClosure);
-          }
-        }
-      }
-      return best;
+      return planClip(m, aneurysm, camera)?.closure ?? 0;
     };
 
     let best = bestFor(0, 0);

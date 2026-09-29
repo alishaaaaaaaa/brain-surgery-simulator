@@ -183,7 +183,8 @@ export class VitalsPanel {
     this.v.abp.textContent = `${Math.round(p.sbp)}/${Math.round(p.dbp)}`;
     this.v.map.textContent = `(${Math.round(p.map)})`;
     this.v.spo2.textContent = String(Math.round(p.spo2));
-    this.v.mep.textContent = `${Math.round(p.mep)}%`;
+    // Amplitudes fluctuate around baseline; show at most 100 % so noise doesn't read as a gain.
+    this.v.mep.textContent = `${Math.min(100, Math.round(p.mep))}%`;
     this.v.time.textContent = formatTime(this.elapsed());
     const o = state.tempOcclusion;
     this.v.occl.textContent = o.active ? formatTime(o.current) : o.total > 0 ? `Σ ${formatTime(o.total)}` : '--:--';

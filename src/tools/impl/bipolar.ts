@@ -61,7 +61,7 @@ export class BipolarTool implements Tool {
       return;
     }
     if (isSac(s)) {
-      addRuptureRisk(sim.ruptureRisk.bipolarDome * (s === 'bleb' ? sim.ruptureRisk.blebMultiplier : 1));
+      addRuptureRisk(sim.ruptureRisk.bipolarDome * (s === 'bleb' ? sim.ruptureRisk.blebMultiplier : 1), 'bipolar');
       this.ctx.toasts.show('toast.bipolarDome', 'danger');
     } else if (isArtery(s)) {
       state.injuries++;

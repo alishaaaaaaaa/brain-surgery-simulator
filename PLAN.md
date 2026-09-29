@@ -58,7 +58,7 @@ Modules talk through a small typed event bus (`vesselTouched`, `arachnoidCut`,
 - **Anatomy is stylized/approximate**, not patient-derived. Comments explain each
   structure's relevance for learners.
 
-## Milestones (each runnable with `npm run dev`)
+## Milestones (each runnable with `npm run dev`) — all complete
 - **M1** Scene, microscope camera controls, post-processing look, basic anatomy
   (lobes, fissure, arachnoid, vessels, nerves, aneurysm, spatulas), pulsation, disclaimer start screen
 - **M2** Toolbar (1–0 shortcuts), cursor models, hover highlight, per-tool interactions

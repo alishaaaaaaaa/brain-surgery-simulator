@@ -46,6 +46,11 @@ export class ToolManager {
   private lastObject: Object3D | null = null;
   private lastDistance = 250;
   private readonly cursorRoot = new Group();
+  /**
+   * Scripted pointer (demo mode): when set, it replaces the mouse — the tool acts on this
+   * hit exactly as it would on a real one.
+   */
+  private override: PointerHit | null = null;
   private highlighted: { material: MeshStandardMaterial; emissive: Color; intensity: number } | null = null;
 
   constructor(
@@ -155,7 +160,41 @@ export class ToolManager {
     if (tool) this.select(this.active === tool ? null : tool.id);
   };
 
+  /** Demo mode: aim the instrument at a hit (null returns control to the mouse). */
+  setOverride(hit: PointerHit | null): void {
+    this.override = hit;
+    if (!hit && this.pressed) this.release();
+  }
+
+  /** Demo mode: press, drag and release the instrument on scripted hits. */
+  simDown(hit: PointerHit): void {
+    if (!this.active) return;
+    this.override = hit;
+    this.hit = hit;
+    this.pressed = true;
+    this.lastTip.copy(hit.point);
+    this.lastObject = hit.object;
+    this.active.down?.(hit);
+  }
+
+  simMove(hit: PointerHit): void {
+    const moved = hit.object === this.lastObject ? hit.point.distanceTo(this.lastTip) : 0;
+    this.override = hit;
+    this.hit = hit;
+    if (this.pressed) this.active?.drag?.(hit, moved, 0, 0);
+    this.lastTip.copy(hit.point);
+    this.lastObject = hit.object;
+  }
+
+  simUp(): void {
+    if (this.pressed) this.release();
+  }
+
   private pick(): void {
+    if (this.override) {
+      this.hit = this.override;
+      return;
+    }
     if (!this.hasPointer) {
       this.hit = null;
       return;
@@ -189,12 +228,12 @@ export class ToolManager {
       if (tool.placeModel) {
         visible = tool.placeModel(this.hit, this.camera);
       } else {
-        visible = this.hasPointer;
+        visible = this.hasPointer || this.override !== null;
         this.placeInstrument(tool);
       }
       tool.model.visible = visible;
     }
-    this.dom.style.cursor = tool && this.hasPointer ? 'none' : '';
+    this.dom.style.cursor = tool && this.hasPointer && !this.override ? 'none' : '';
 
     // Hover highlight.
     const cls = tool && this.hit ? tool.classify(this.hit) : null;

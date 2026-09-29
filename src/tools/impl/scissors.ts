@@ -44,7 +44,7 @@ export class ScissorsTool implements Tool {
     } else if (s === 'adhesion') {
       freeAdhesion(hit.object.userData.adhesion as Adhesion, this.ctx);
     } else if (isSac(s)) {
-      addRuptureRisk(sim.ruptureRisk.scissorsDome * (s === 'bleb' ? 2 : 1));
+      addRuptureRisk(sim.ruptureRisk.scissorsDome * (s === 'bleb' ? 2 : 1), 'scissors');
       this.ctx.toasts.show('toast.scissorsDome', 'danger');
     } else if (isArtery(s) || isNerve(s)) {
       state.injuries++;

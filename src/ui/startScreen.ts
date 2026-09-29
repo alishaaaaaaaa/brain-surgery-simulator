@@ -3,8 +3,9 @@ import { applyTranslations } from './i18n';
 import { langToggle } from './langToggle';
 
 /** Start screen with the educational-use disclaimer (shown in the selected language). */
-export function showStartScreen(root: HTMLElement, onStart: () => void): void {
+export function showStartScreen(root: HTMLElement, onStart: (demo: boolean) => void): void {
   const startBtn = tr('button', 'start.button', { class: 'start-btn', type: 'button' });
+  const demoBtn = tr('button', 'demo.start', { class: 'demo-btn', type: 'button' });
   const card = h(
     'section',
     { class: 'start-card panel', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'start-title' },
@@ -27,16 +28,18 @@ export function showStartScreen(root: HTMLElement, onStart: () => void): void {
       tr('p', 'start.disclaimer'),
       tr('p', 'start.anatomyNote'),
     ),
-    startBtn,
+    h('div', { class: 'start-actions' }, startBtn, demoBtn),
   );
   const screen = h('div', { class: 'start-screen' }, card);
   root.append(screen);
   applyTranslations(screen);
   startBtn.focus();
 
-  startBtn.addEventListener('click', () => {
+  const go = (demo: boolean) => {
     screen.classList.add('is-hidden');
     setTimeout(() => screen.remove(), 600);
-    onStart();
-  });
+    onStart(demo);
+  };
+  startBtn.addEventListener('click', () => go(false));
+  demoBtn.addEventListener('click', () => go(true));
 }

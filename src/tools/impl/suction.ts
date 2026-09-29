@@ -33,7 +33,7 @@ export class SuctionTool implements Tool {
       aspirating = csf || blood;
       if (isSac(hit.structure)) {
         const m = hit.structure === 'bleb' ? sim.ruptureRisk.blebMultiplier : 1;
-        addRuptureRisk(sim.ruptureRisk.suctionDomePerSecond * m * dt);
+        addRuptureRisk(sim.ruptureRisk.suctionDomePerSecond * m * dt, 'suction');
         this.ctx.toasts.show('toast.suctionDome', 'caution');
       }
     }

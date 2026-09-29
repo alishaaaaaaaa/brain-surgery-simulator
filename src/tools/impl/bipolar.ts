@@ -44,23 +44,39 @@ export class BipolarTool implements Tool {
     this.ctx.audio.buzz();
     this.sparkT = 0;
     const s = hit.structure;
+    // Hemostasis first: is there a bleeding point between the tips?
+    const bleed = this.ctx.bleeding.coagulateNear(hit.point);
+    if (bleed === 'stopped') {
+      state.coagulations++;
+      events.emit('coagulated', { structure: s, point: hit.point });
+      if (s !== 'blood') this.addMark(hit);
+      return;
+    }
+    if (bleed === 'rupture') {
+      this.ctx.toasts.show('toast.bipolarRupture', 'danger', 4000);
+      return;
+    }
+    if (s === 'blood') {
+      this.ctx.toasts.show('toast.noBleedHere', 'info');
+      return;
+    }
     if (isSac(s)) {
       addRuptureRisk(sim.ruptureRisk.bipolarDome * (s === 'bleb' ? sim.ruptureRisk.blebMultiplier : 1));
       this.ctx.toasts.show('toast.bipolarDome', 'danger');
     } else if (isArtery(s)) {
       state.injuries++;
-      events.emit('injury', { structure: s, severity: 'major', point: hit.point, tool: this.id });
+      events.emit('injury', { structure: s, severity: 'major', point: hit.point, normal: hit.normal, tool: this.id });
       this.ctx.toasts.show('toast.bipolarArtery', 'danger');
     } else if (isNerve(s)) {
       state.injuries++;
-      events.emit('injury', { structure: s, severity: 'major', point: hit.point, tool: this.id });
+      events.emit('injury', { structure: s, severity: 'major', point: hit.point, normal: hit.normal, tool: this.id });
       this.ctx.toasts.show('toast.bipolarNerve', 'danger');
-    } else if (isBrain(s) || s === 'blood') {
+    } else if (isBrain(s)) {
       state.coagulations++;
       events.emit('coagulated', { structure: s, point: hit.point });
       this.ctx.toasts.show('toast.coagulated', 'info', 1200);
     }
-    if (s !== 'blood') this.addMark(hit);
+    this.addMark(hit);
   }
 
   up(): void {

@@ -12,7 +12,10 @@ import { events } from './core/events';
 import { Heart } from './core/heart';
 import { clock } from './core/clock';
 import { state } from './core/state';
+import { Bleeding } from './physics/bleeding';
 import { Fluids } from './physics/fluids';
+import { Physiology } from './physics/physiology';
+import { Complications } from './procedure/complications';
 import { Procedure } from './procedure/procedure';
 import { Tracker } from './procedure/tracker';
 import { Autofocus } from './scene/autofocus';
@@ -34,6 +37,7 @@ import { mountHud } from './ui/hud';
 import { mountChecklist } from './ui/checklist';
 import { getLang, t, type I18nKey } from './ui/i18n';
 import { mountMentor } from './ui/mentor';
+import { VitalsPanel } from './ui/vitals';
 import { showStartScreen } from './ui/startScreen';
 import { Toasts } from './ui/toast';
 import { mountToolbar } from './ui/toolbar';
@@ -50,6 +54,8 @@ const anatomy = buildAnatomy();
 scene.add(anatomy.root);
 const fluids = new Fluids();
 anatomy.root.add(fluids.group);
+const bleeding = new Bleeding();
+anatomy.root.add(bleeding.group);
 const field = new Group();
 field.name = 'field';
 anatomy.root.add(field);
@@ -63,7 +69,7 @@ anatomy.root.traverse((o) => {
 
 // One shared list of pickable objects: autofocus and the tools both raycast it.
 const pickables = anatomy.pickables;
-pickables.push(...fluids.pools.map((p) => p.mesh));
+pickables.push(...fluids.pools.map((p) => p.mesh), bleeding.layer);
 
 const controls = new MicroscopeControls(camera, renderer.domElement);
 const light = new MicroscopeLight(scene);
@@ -76,6 +82,7 @@ viewport.appendChild(labelRenderer.domElement);
 
 const heart = new Heart(sim.heart.baselineRate);
 const audio = new AudioEngine();
+const physiology = new Physiology();
 
 // --- Tools -----------------------------------------------------------------
 const toasts = new Toasts(uiRoot);
@@ -86,6 +93,7 @@ const ctx: ToolContext = {
   camera,
   anatomy,
   fluids,
+  bleeding,
   audio,
   toasts,
   field,
@@ -127,7 +135,11 @@ const tracker = new Tracker({
   aneurysm: anatomy.aneurysm,
   clips: () => clipTool.placed,
   tempClips: () => tempClipTool.placed,
+  activeBleeds: () => bleeding.activeCount,
 });
+// A clip across the neck secures a ruptured aneurysm.
+bleeding.neckClipped = () => tracker.clipsAcrossNeck() > 0;
+const complications = new Complications(anatomy, bleeding, toasts);
 
 // Identifying a structure briefly shows its label, so the learner can check themselves.
 events.on('identified', ({ structure }) => {
@@ -150,11 +162,25 @@ let hud: ReturnType<typeof mountHud> | null = null;
 let toolbar: ReturnType<typeof mountToolbar> | null = null;
 let checklist: ReturnType<typeof mountChecklist> | null = null;
 let mentor: ReturnType<typeof mountMentor> | null = null;
+let vitals: VitalsPanel | null = null;
 showStartScreen(uiRoot, () => {
   audio.unlock();
-  hud = mountHud(uiRoot);
+  hud = mountHud(uiRoot, audio);
   checklist = mountChecklist(uiRoot, procedure);
-  mentor = mountMentor(uiRoot, procedure);
+  mentor = mountMentor(uiRoot, procedure, () =>
+    state.ruptured && !state.ruptureSecured
+      ? {
+          titleKey: 'mentor.emergency',
+          textKey: 'mentor.emergencyText',
+          steps: [
+            { labelKey: 'task.suctionField', done: complications.fieldCleared },
+            { labelKey: 'task.tempClipOn', done: state.tempOcclusion.active },
+            { labelKey: 'task.neckSecured', done: state.ruptureSecured },
+          ],
+        }
+      : null,
+  );
+  vitals = new VitalsPanel(uiRoot, physiology, heart, audio, () => clock.elapsed);
   toolbar = mountToolbar(uiRoot, tools, clipTool);
   clock.running = true;
   events.emit('started');
@@ -166,6 +192,7 @@ window.addEventListener('keydown', (e) => {
   if (key === 'l') anatomy.labels.toggleAll();
   // R resets the view unless a tool uses the key.
   if (key === 'r') controls.reset();
+  if (key === 'm') audio.setMuted(!audio.muted);
 });
 
 // --- Resize ----------------------------------------------------------------
@@ -189,6 +216,16 @@ renderer.setAnimationLoop((now: number) => {
   last = now;
 
   clock.tick(dt);
+  if (clock.running) {
+    complications.update(dt);
+    physiology.update(dt, {
+      ebl: state.ebl,
+      bleedRate: bleeding.currentRate,
+      occlusionSeconds: state.tempOcclusion.active ? state.tempOcclusion.current : 0,
+      perforatorIschemia: 0, // from the M5 flow model
+    });
+    heart.rate = physiology.hr;
+  }
   heart.update(dt);
   pulseUniform.value = heart.pulse;
 
@@ -196,6 +233,7 @@ renderer.setAnimationLoop((now: number) => {
   tools.update(dt);
   updateArachnoid(anatomy.arachnoid, dt);
   updateAdhesions(anatomy.adhesions, dt);
+  bleeding.update(dt, heart.pulse);
   anatomy.labels.update(dt);
   if (clock.running) {
     tracker.update(dt, tools.hit?.structure ?? null);
@@ -206,6 +244,7 @@ renderer.setAnimationLoop((now: number) => {
   light.update(camera, controls.target);
 
   post.render(dt);
+  vitals?.update(dt);
   labelRenderer.render(scene, camera);
 
   hudTimer -= dt;
@@ -219,4 +258,4 @@ renderer.setAnimationLoop((now: number) => {
 });
 
 // Handy for debugging in the browser console (e.g. __sim.state.ruptureRisk).
-Object.assign(window, { __sim: { scene, camera, anatomy, controls, post, heart, tools, state, fluids, procedure, tracker, clock } });
+Object.assign(window, { __sim: { scene, camera, anatomy, controls, post, heart, tools, state, fluids, procedure, tracker, clock, bleeding, physiology, complications } });

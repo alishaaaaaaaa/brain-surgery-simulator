@@ -142,6 +142,24 @@ export class AudioEngine {
     this.tone(1320, 0.6, 0.04, 'sine', 0.24);
   }
 
+  /**
+   * Pulse-oximeter beep on every heartbeat. Its pitch falls as SpO2 falls — anaesthetists
+   * hear desaturation before they look at the number.
+   */
+  pulseBeep(spo2: number): void {
+    const f = 380 + Math.max(0, spo2 - 75) * 18;
+    this.tone(f, 0.07, 0.03);
+  }
+
+  /** Monitor alarm: high priority = fast five-tone burst, medium = three slower tones. */
+  alarm(priority: 'high' | 'medium'): void {
+    if (priority === 'high') {
+      [0, 0.12, 0.24, 0.5, 0.62].forEach((d) => this.tone(960, 0.1, 0.07, 'square', d));
+    } else {
+      [0, 0.2, 0.4].forEach((d) => this.tone(700, 0.14, 0.05, 'triangle', d));
+    }
+  }
+
   /** Soft two-tone cue for a caution message. */
   caution(): void {
     this.tone(660, 0.12, 0.07);

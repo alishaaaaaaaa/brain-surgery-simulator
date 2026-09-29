@@ -2,6 +2,7 @@ import type { Camera, Group, Object3D, Scene, Vector3 } from 'three';
 import type { Anatomy } from '../anatomy';
 import type { AudioEngine } from '../audio/engine';
 import type { StructureId, ToolId } from '../core/events';
+import type { Bleeding } from '../physics/bleeding';
 import type { Fluids } from '../physics/fluids';
 import type { I18nKey } from '../ui/i18n';
 import type { Toasts } from '../ui/toast';
@@ -23,6 +24,7 @@ export interface ToolContext {
   camera: Camera;
   anatomy: Anatomy;
   fluids: Fluids;
+  bleeding: Bleeding;
   audio: AudioEngine;
   toasts: Toasts;
   /** Container for objects tools leave in the field (clips, coagulation marks). */

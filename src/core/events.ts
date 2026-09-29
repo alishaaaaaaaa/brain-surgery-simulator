@@ -54,10 +54,10 @@ export interface SimEvents {
   languageChanged: { lang: string };
   heartbeat: { rate: number };
   toolChanged: { tool: ToolId | null };
-  arachnoidCut: { sheet: string; index: number; remaining: number };
+  arachnoidCut: { sheet: string; index: number; remaining: number; point: Vector3 };
   adhesionFreed: { id: string; kind: 'neck' | 'dome' };
   /** A structure was damaged. severity: 'minor' (pia/small vessel), 'major' (artery/nerve). */
-  injury: { structure: StructureId; severity: 'minor' | 'major'; point: Vector3; tool: ToolId };
+  injury: { structure: StructureId; severity: 'minor' | 'major'; point: Vector3; normal: Vector3; tool: ToolId };
   coagulated: { structure: StructureId; point: Vector3 };
   ruptureRiskChanged: { value: number };
   fluidAspirated: { amount: number };
@@ -71,7 +71,14 @@ export interface SimEvents {
   identified: { structure: StructureId };
   /** Stage `index` (0-based) completed; `next` is the new current stage or null when done. */
   stageCompleted: { index: number; id: string; time: number; next: number | null };
+  bleedStarted: { kind: BleedKind; point: Vector3 };
+  bleedStopped: { kind: BleedKind; by: 'bipolar' | 'clip' };
+  ruptured: { point: Vector3 };
+  ruptureSecured: void;
+  alarm: { id: 'mapLow' | 'hrHigh' | 'spo2Low' | 'mepLow'; active: boolean };
 }
+
+export type BleedKind = 'ooze' | 'arterial' | 'rupture';
 
 type Handler<T> = (payload: T) => void;
 

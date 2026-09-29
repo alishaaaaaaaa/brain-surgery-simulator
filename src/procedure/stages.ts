@@ -18,6 +18,8 @@ export interface Facts {
   /** Number of permanent clips whose blades sit across the neck. */
   clipsAcrossNeck(): number;
   tempClipOn(): boolean;
+  /** Bleeding points still bleeding. */
+  activeBleeds(): number;
 }
 
 export interface Subtask {
@@ -53,6 +55,9 @@ const doppler = (s: StructureId, labelKey: I18nKey): Subtask => ({
   progress: (f) => (f.dopplerTouched(s) ? 1 : 0),
 });
 
+/** Hemostasis: a step is not finished while something is still bleeding. */
+const dryField: Subtask = { id: 'dryField', labelKey: 'task.dryField', live: true, progress: (f) => (f.activeBleeds() === 0 ? 1 : 0) };
+
 const freed = (ids: string[]) => (f: Facts) => ids.filter((id) => f.adhesionFreed(id)).length / ids.length;
 
 /**
@@ -74,6 +79,7 @@ export const STAGES: StageDef[] = [
         live: true,
         progress: (f) => (Math.max(f.retraction.frontal, f.retraction.temporal) <= sim.retraction.warnAbove ? 1 : 0),
       },
+      dryField,
     ],
   },
   {
@@ -112,6 +118,7 @@ export const STAGES: StageDef[] = [
     subtasks: [
       { id: 'clipNeck', labelKey: 'task.clipNeck', live: true, progress: (f) => (f.clipsAcrossNeck() > 0 ? 1 : 0) },
       { id: 'noTempClip', labelKey: 'task.noTempClip', live: true, progress: (f) => (f.tempClipOn() ? 0 : 1) },
+      dryField,
     ],
   },
   {

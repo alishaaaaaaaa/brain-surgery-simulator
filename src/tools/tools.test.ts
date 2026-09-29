@@ -8,6 +8,7 @@ import { anatomy as cfg, type NerveId, type VesselId } from '../config/anatomy';
 import { sim } from '../config/sim';
 import { events, type StructureId } from '../core/events';
 import { state } from '../core/state';
+import { Bleeding } from '../physics/bleeding';
 import { Fluids } from '../physics/fluids';
 import { ClipTool } from './impl/clip';
 import { DissectorTool } from './impl/dissector';
@@ -36,6 +37,7 @@ function makeCtx(): ToolContext & { shown: string[]; pickables: Object3D[] } {
     camera,
     anatomy: { adhesions, arachnoid: [] } as never,
     fluids: new Fluids(),
+    bleeding: new Bleeding(),
     audio: silent as never,
     toasts: { show: (k: string) => shown.push(k) } as never,
     field: new Group(),

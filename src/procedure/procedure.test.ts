@@ -14,6 +14,7 @@ function makeFacts() {
     retraction: { frontal: 0.3, temporal: 0.3 },
     clips: 0,
     temp: false,
+    bleeds: 0,
   };
   const facts: Facts = {
     arachnoidOpened: (s) => f.opened[s],
@@ -25,6 +26,7 @@ function makeFacts() {
     },
     clipsAcrossNeck: () => f.clips,
     tempClipOn: () => f.temp,
+    activeBleeds: () => f.bleeds,
   };
   return { f, facts };
 }
@@ -52,8 +54,8 @@ describe('Procedure', () => {
     f.opened.middle = 0.5;
     run(p, facts);
     expect(p.current).toBe(0);
-    // superficial 1 + middle 0.5 + gentle retraction 1 → 2.5 / 3
-    expect(p.stageProgress(0)).toBeCloseTo(2.5 / 3);
+    // superficial 1 + middle 0.5 + gentle retraction 1 + dry field 1 → 3.5 / 4
+    expect(p.stageProgress(0)).toBeCloseTo(3.5 / 4);
   });
 
   it('counts a just-finished stage once while waiting to advance', () => {
@@ -104,6 +106,18 @@ describe('Procedure', () => {
     expect(p.finished).toBe(true);
     expect(p.overallProgress).toBe(1);
     off();
+  });
+
+  it('a step does not finish while something is still bleeding', () => {
+    const { f, facts } = makeFacts();
+    const p = new Procedure();
+    f.opened.superficial = f.opened.middle = 1;
+    f.bleeds = 1;
+    run(p, facts);
+    expect(p.current).toBe(0);
+    f.bleeds = 0;
+    run(p, facts);
+    expect(p.current).toBe(1);
   });
 
   it('the clip stage waits for the temporary clip to come off', () => {

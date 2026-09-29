@@ -1,3 +1,4 @@
+import type { AudioEngine } from '../audio/engine';
 import { events } from '../core/events';
 import { h, tr } from './dom';
 import { applyTranslations, t } from './i18n';
@@ -12,12 +13,14 @@ export interface Hud {
  * (collapsible) controls help. Other panels: checklist (left), vitals (top right, M4),
  * toolbar (bottom), mentor (bottom right).
  */
-export function mountHud(root: HTMLElement): Hud {
+export function mountHud(root: HTMLElement, audio: AudioEngine): Hud {
   const zoom = h('span', { class: 'v' }, '—');
   const focus = h('span', { class: 'v' }, '—');
 
   const helpBtn = h('button', { type: 'button', class: 'help-btn', 'aria-expanded': 'false' }, '?');
-  const brand = h('div', { class: 'hud-brand panel' }, tr('span', 'app.title', { class: 'title' }), langToggle(), helpBtn);
+  const muteBtn = h('button', { type: 'button', class: 'help-btn mute-btn', 'aria-pressed': 'false' }, '♪');
+  muteBtn.addEventListener('click', () => audio.setMuted(!audio.muted));
+  const brand = h('div', { class: 'hud-brand panel' }, tr('span', 'app.title', { class: 'title' }), langToggle(), muteBtn, helpBtn);
   const top = h(
     'div',
     { class: 'hud-top panel', 'aria-live': 'off' },
@@ -40,6 +43,7 @@ export function mountHud(root: HTMLElement): Hud {
       tr('li', 'hud.controls.labels'),
       tr('li', 'hud.controls.reset'),
       tr('li', 'hud.controls.focus'),
+      tr('li', 'hud.controls.mute'),
       tr('li', 'hud.controls.help'),
     ),
     tr('div', 'hud.milestone', { class: 'milestone' }),
@@ -52,6 +56,7 @@ export function mountHud(root: HTMLElement): Hud {
     help.hidden = !open;
     helpBtn.setAttribute('aria-expanded', String(open));
     helpBtn.title = t('hud.help');
+    muteBtn.title = t('hud.mute');
   };
   helpBtn.addEventListener('click', () => setHelp(help.hidden));
   window.addEventListener('keydown', (e) => {
@@ -63,6 +68,8 @@ export function mountHud(root: HTMLElement): Hud {
 
   return {
     setReadouts(mag, depth) {
+      muteBtn.setAttribute('aria-pressed', String(audio.muted));
+      muteBtn.classList.toggle('is-muted', audio.muted);
       zoom.textContent = `${mag.toFixed(1)}×`;
       focus.textContent = `${depth.toFixed(1)} mm`;
     },

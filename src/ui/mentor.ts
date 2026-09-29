@@ -1,7 +1,14 @@
 import { events } from '../core/events';
 import type { Procedure } from '../procedure/procedure';
 import { h, tr } from './dom';
-import { applyTranslations, t } from './i18n';
+import { applyTranslations, t, type I18nKey } from './i18n';
+
+/** An emergency checklist that temporarily takes over the mentor (e.g. rupture). */
+export interface Emergency {
+  titleKey: I18nKey;
+  textKey: I18nKey;
+  steps: { labelKey: I18nKey; done: boolean }[];
+}
 
 const STORAGE_KEY = 'sim.mentorCollapsed';
 
@@ -9,7 +16,7 @@ const STORAGE_KEY = 'sim.mentorCollapsed';
  * Bottom-right mentor: a short, calm instruction for the current step, its sub-tasks as
  * checkboxes, and a progress percentage. Collapsible (remembered per browser).
  */
-export function mountMentor(root: HTMLElement, procedure: Procedure): { refresh(): void } {
+export function mountMentor(root: HTMLElement, procedure: Procedure, emergency: () => Emergency | null = () => null): { refresh(): void } {
   const step = h('span', { class: 'step mono' });
   const pct = h('span', { class: 'pct mono' });
   const toggle = h('button', { type: 'button', class: 'collapse', 'aria-expanded': 'true' });
@@ -17,7 +24,11 @@ export function mountMentor(root: HTMLElement, procedure: Procedure): { refresh(
   const text = h('p');
   const tasks = h('ul', { class: 'tasks' });
   const fill = h('i');
-  const body = h('div', { class: 'body' }, title, text, tasks, h('div', { class: 'progress' }, fill));
+  const alertTitle = h('h3');
+  const alertText = h('p');
+  const alertSteps = h('ul', { class: 'tasks' });
+  const alert = h('div', { class: 'alert', role: 'alert', hidden: '' }, alertTitle, alertText, alertSteps);
+  const body = h('div', { class: 'body' }, alert, title, text, tasks, h('div', { class: 'progress' }, fill));
   const panel = h(
     'section',
     { class: 'mentor panel', 'aria-label': 'Mentor' },
@@ -73,7 +84,24 @@ export function mountMentor(root: HTMLElement, procedure: Procedure): { refresh(
     }
   }
 
+  function refreshEmergency(): void {
+    const e = emergency();
+    alert.hidden = !e;
+    panel.classList.toggle('is-emergency', !!e);
+    if (!e) return;
+    // An emergency always opens the panel.
+    if (collapsed) setCollapsed(false);
+    alertTitle.textContent = t(e.titleKey);
+    alertText.textContent = t(e.textKey);
+    alertSteps.replaceChildren(
+      ...e.steps.map((s) =>
+        h('li', { class: s.done ? 'is-done' : '' }, h('span', { class: 'box', 'aria-hidden': 'true' }, s.done ? '✓' : ''), h('span', { class: 'label' }, t(s.labelKey)), h('span')),
+      ),
+    );
+  }
+
   function refresh(): void {
+    refreshEmergency();
     if (procedure.current !== shownStage) rebuild();
     const total = procedure.stages.length;
     const stage = procedure.currentStage;

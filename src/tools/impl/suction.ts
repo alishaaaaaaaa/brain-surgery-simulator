@@ -28,7 +28,9 @@ export class SuctionTool implements Tool {
   update(dt: number, hit: PointerHit | null, pressed: boolean): void {
     let aspirating = false;
     if (pressed && hit) {
-      aspirating = this.ctx.fluids.aspirate(hit.point, dt);
+      const csf = this.ctx.fluids.aspirate(hit.point, dt);
+      const blood = this.ctx.bleeding.aspirate(hit.point, dt) > 0;
+      aspirating = csf || blood;
       if (isSac(hit.structure)) {
         const m = hit.structure === 'bleb' ? sim.ruptureRisk.blebMultiplier : 1;
         addRuptureRisk(sim.ruptureRisk.suctionDomePerSecond * m * dt);

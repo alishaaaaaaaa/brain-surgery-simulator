@@ -58,4 +58,44 @@ export const sim = {
     /** Retraction pressure above which a warning is shown (0..1). */
     warnAbove: 0.7,
   },
+
+  /** Bleeding (mL and mL/s). */
+  bleeding: {
+    /**
+     * The aneurysm ruptures when the hidden rupture risk crosses a threshold drawn at
+     * random between these values at the start of each case (so it can't be memorised).
+     */
+    ruptureThreshold: [0.45, 0.75] as [number, number],
+    /** Arterial bleeding from a ruptured aneurysm with full ICA inflow. */
+    ruptureRate: 4,
+    /** Fraction of rupture bleeding left with a temporary clip on the ICA (back-bleeding via the PCom). */
+    ruptureWithTempClip: 0.15,
+    /** Injured artery (cut or coagulated). */
+    arterialRate: 1.2,
+    /** Pial or small-vessel ooze. */
+    oozeRate: 0.06,
+    /** Chance that cutting an arachnoid segment tears a small bridging vein. */
+    oozeOnArachnoidCut: 0.25,
+    /** Suction clears blood at this rate while the tip is in it. */
+    suctionRate: 7,
+    /** Blood-layer rise per mL collected in the corridor (mm/mL). */
+    levelPerMl: 0.19,
+    /** Bipolar reach: bleed points this close to the tips are coagulated (mm). */
+    bipolarReach: 2.2,
+  },
+
+  /** Physiology (anaesthetised adult, ~5 L blood volume). */
+  physiology: {
+    bloodVolume: 5000,
+    baseline: { hr: 68, sbp: 118, dbp: 68, spo2: 99 },
+    /** Seconds of temporary ICA occlusion before MEPs start to fall, and until they reach the floor. */
+    mepSafeOcclusion: 120,
+    mepFloorAt: 420,
+    mepFloor: 35,
+    /** Alarm limits. A MEP amplitude fall of more than 50 % is the usual warning criterion. */
+    alarms: { mapLow: 60, hrHigh: 110, spo2Low: 92, mepLow: 50 },
+    /** Temporary occlusion timer colour changes (s). */
+    occlusionCaution: 180,
+    occlusionDanger: 300,
+  },
 } as const;

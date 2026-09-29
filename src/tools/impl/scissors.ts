@@ -39,7 +39,7 @@ export class ScissorsTool implements Tool {
       const patch = hit.object.userData.patch as ArachnoidPatch;
       cutPatch(patch, hit.point.y);
       const remaining = this.ctx.anatomy.arachnoid.filter((p) => !p.cut).length;
-      events.emit('arachnoidCut', { sheet: patch.sheet, index: patch.index, remaining });
+      events.emit('arachnoidCut', { sheet: patch.sheet, index: patch.index, remaining, point: hit.point });
       this.ctx.toasts.show('toast.arachnoidCut', 'success', 1400);
     } else if (s === 'adhesion') {
       freeAdhesion(hit.object.userData.adhesion as Adhesion, this.ctx);
@@ -48,11 +48,11 @@ export class ScissorsTool implements Tool {
       this.ctx.toasts.show('toast.scissorsDome', 'danger');
     } else if (isArtery(s) || isNerve(s)) {
       state.injuries++;
-      events.emit('injury', { structure: s, severity: 'major', point: hit.point, tool: this.id });
+      events.emit('injury', { structure: s, severity: 'major', point: hit.point, normal: hit.normal, tool: this.id });
       this.ctx.toasts.show(isNerve(s) ? 'toast.scissorsNerve' : 'toast.scissorsVessel', 'danger');
     } else if (isBrain(s)) {
       state.injuries++;
-      events.emit('injury', { structure: s, severity: 'minor', point: hit.point, tool: this.id });
+      events.emit('injury', { structure: s, severity: 'minor', point: hit.point, normal: hit.normal, tool: this.id });
       this.ctx.toasts.show('toast.pialInjury', 'caution');
     }
   }

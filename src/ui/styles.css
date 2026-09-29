@@ -462,3 +462,82 @@ button:focus-visible { outline: 1px solid var(--accent); outline-offset: 2px; }
   .checklist { display: none; }
   .mentor { bottom: auto; top: 52px; }
 }
+
+/* ---------- Mute ---------- */
+.mute-btn.is-muted { color: var(--muted); text-decoration: line-through; opacity: 0.6; }
+
+/* ---------- Vitals (top right) ---------- */
+.vitals {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  width: 340px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: rgba(3, 6, 7, 0.78);
+}
+.vitals .row { display: grid; grid-template-columns: 1fr 104px; gap: 8px; align-items: stretch; }
+.vitals .trace {
+  width: 100%;
+  height: 44px;
+  border-bottom: 1px solid rgba(150, 215, 205, 0.08);
+}
+.vitals .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.vitals .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; border-top: 1px solid var(--border); padding-top: 6px; }
+.vitals .num {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 2px 6px;
+  border-radius: 3px;
+  border: 1px solid transparent;
+}
+.vitals .num .k { font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.1em; color: var(--muted); }
+.vitals .num .v { font-size: 22px; line-height: 1.1; font-weight: 500; }
+.vitals .num .sub { font-size: 11px; opacity: 0.8; }
+.vitals .hr .v { color: #57e38c; font-size: 28px; }
+.vitals .abp .v { color: #ff6b6b; }
+.vitals .abp .sub { color: #ff6b6b; }
+.vitals .spo2 .v { color: #4fd6ff; }
+.vitals .mep .v { color: #ffd24a; }
+.vitals .grid2 .num { flex-direction: row; align-items: baseline; justify-content: space-between; }
+.vitals .grid3 .v { font-size: 13px; color: var(--text); }
+.vitals .hr.beat .k::after { content: ' ♥'; color: #57e38c; animation: beat 0.35s ease-out; }
+@keyframes beat { from { opacity: 1; } to { opacity: 0; } }
+.vitals .num.is-alarm { border-color: var(--alarm); background: rgba(255, 60, 60, 0.14); animation: alarm-blink 1s steps(2, start) infinite; }
+.vitals .num.is-alarm .v { color: var(--alarm) !important; }
+@keyframes alarm-blink { 50% { background: rgba(255, 60, 60, 0.03); } }
+.vitals .occl.is-active .v { color: #ffd24a; }
+.vitals .occl.is-caution { border-color: rgba(255, 181, 71, 0.6); }
+.vitals .occl.is-caution .v { color: var(--warn); }
+.vitals .alarm-line { font-size: 10px; letter-spacing: 0.12em; color: var(--muted); text-align: right; }
+.vitals .alarm-line.is-alarm { color: var(--alarm); }
+
+/* Readouts move out from under the vitals panel on narrower screens. */
+@media (max-width: 1200px) {
+  .hud-top { left: auto; right: 364px; transform: none; }
+}
+
+/* ---------- Mentor emergency ---------- */
+.mentor.is-emergency { border-color: rgba(255, 93, 93, 0.7); }
+.mentor .alert {
+  margin: 0 0 12px;
+  padding: 8px 10px;
+  border: 1px solid rgba(255, 93, 93, 0.6);
+  border-left: 3px solid var(--alarm);
+  border-radius: var(--radius);
+  background: rgba(60, 6, 6, 0.55);
+}
+.mentor .alert[hidden] { display: none; }
+.mentor .alert h3 { color: var(--alarm); }
+.mentor .alert p { color: #f0d0d0; }
+.mentor .alert .tasks { margin-bottom: 0; }
+.mentor .alert .tasks li.is-done .box { background: var(--alarm); border-color: var(--alarm); }
+
+@media (max-width: 900px) {
+  .vitals { width: 260px; }
+  .vitals .row { grid-template-columns: 1fr 84px; }
+  .vitals .trace { height: 34px; }
+}

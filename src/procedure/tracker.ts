@@ -13,6 +13,7 @@ export interface TrackerSources {
   aneurysm: AneurysmHandle;
   clips: () => readonly PlacedClip[];
   tempClips: () => readonly PlacedClip[];
+  activeBleeds: () => number;
 }
 
 /**
@@ -73,5 +74,9 @@ export class Tracker implements Facts {
 
   tempClipOn(): boolean {
     return this.src.tempClips().length > 0;
+  }
+
+  activeBleeds(): number {
+    return this.src.activeBleeds();
   }
 }

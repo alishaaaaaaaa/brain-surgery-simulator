@@ -57,20 +57,3 @@ Modules talk through a small typed event bus (`vesselTouched`, `arachnoidCut`,
   APIs as the user; any click stops the script and hands control back.
 - **Anatomy is stylized/approximate**, not patient-derived. Comments explain each
   structure's relevance for learners.
-
-## Milestones (each runnable with `npm run dev`) — all complete
-- **M1** Scene, microscope camera controls, post-processing look, basic anatomy
-  (lobes, fissure, arachnoid, vessels, nerves, aneurysm, spatulas), pulsation, disclaimer start screen
-- **M2** Toolbar (1–0 shortcuts), cursor models, hover highlight, per-tool interactions
-- **M3** Stage system, left checklist, mentor panel (collapsible, sub-tasks, %), EN/FR toggle
-- **M4** Vitals panel + ECG, bleeding/oozing, bipolar, suction, rupture, temporary clip + timer
-- **M5** Clip placement & evaluation, ICG view, Doppler audio, endoscope PiP
-- **M6** Debrief screen, demo mode, polish, performance pass
-
-After each milestone: run dev server + `tsc` + tests, fix errors, report what to test.
-
-## Questions (defaults assumed if you don't say otherwise)
-1. **French text** — I'll write the FR translations myself; fine to have you review them later? *(default: yes)*
-2. **Controls** — left-drag = use tool, right-drag = move scope, wheel = zoom. *(default)*
-3. **Difficulty** — one fixed anatomy/difficulty to start, randomized variants later? *(default: fixed)*
-4. **Commits** — commit at the end of each milestone on `main`? *(default: yes)*

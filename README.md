@@ -84,5 +84,3 @@ src/
 
 Debugging: `__sim` in the browser console exposes the simulation (e.g.
 `__sim.state.ruptureRisk`, `__sim.getFlow()`, `__sim.simulate(0.1)`).
-
-See [PLAN.md](PLAN.md) for the original plan and milestones.
